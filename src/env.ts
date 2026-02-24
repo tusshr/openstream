@@ -1,69 +1,25 @@
-import { type Static, type TSchema, Type } from "@sinclair/typebox";
+import { type Static, Type } from "@sinclair/typebox";
 import { Value } from "@sinclair/typebox/value";
-import { createEnv, type StandardSchemaV1 } from "@t3-oss/env-core";
 
-const formatIssuePath = (
-  path?: readonly (PropertyKey | { key: PropertyKey })[],
-) => {
-  if (!path || path.length === 0) return "unknown";
-
-  return path
-    .map((segment) =>
-      typeof segment === "object" && segment !== null && "key" in segment
-        ? String(segment.key)
-        : String(segment),
-    )
-    .join(".");
-};
-
-const toStandardSchema = <T extends TSchema>(
-  schema: T,
-): StandardSchemaV1<unknown, Static<T>> => ({
-  "~standard": {
-    version: 1,
-    vendor: "typebox",
-    validate: (value: unknown) => {
-      const errors = [...Value.Errors(schema, value)];
-
-      if (errors.length === 0) {
-        return {
-          value: value as Static<T>,
-        };
-      }
-
-      return {
-        issues: errors.map((error) => ({
-          message: error.message,
-          path: error.path ? error.path.split("/").filter(Boolean) : undefined,
-        })),
-      };
-    },
-  },
+const EnvSchema = Type.Object({
+  NODE_ENV: Type.Union([
+    Type.Literal("development"),
+    Type.Literal("test"),
+    Type.Literal("production"),
+  ]),
+  DATABASE_URL: Type.String({ minLength: 1 }),
+  REDIS_URL: Type.String({ minLength: 1 }),
+  ALLOWED_ORIGIN: Type.Optional(Type.String({ minLength: 1 })),
+  PORT: Type.Optional(Type.String({ pattern: "^[0-9]{1,5}$" })),
+  S3_ACCESS_KEY_ID: Type.String({ minLength: 1 }),
+  S3_SECRET_ACCESS_KEY: Type.String({ minLength: 1 }),
+  S3_BUCKET: Type.String({ minLength: 1 }),
+  S3_REGION: Type.Optional(Type.String({ minLength: 1 })),
+  S3_ENDPOINT: Type.Optional(Type.String({ minLength: 1 })),
 });
 
-const optional = <T extends TSchema>(schema: T) =>
-  Type.Union([schema, Type.Undefined()]);
-
-const nodeEnv = Type.Union([
-  Type.Literal("development"),
-  Type.Literal("test"),
-  Type.Literal("production"),
-]);
-
-export const env = createEnv({
-  server: {
-    NODE_ENV: toStandardSchema(nodeEnv),
-    DATABASE_URL: toStandardSchema(Type.String({ minLength: 1 })),
-    REDIS_URL: toStandardSchema(Type.String({ minLength: 1 })),
-    ALLOWED_ORIGIN: toStandardSchema(optional(Type.String({ minLength: 1 }))),
-    PORT: toStandardSchema(optional(Type.String({ pattern: "^[0-9]{1,5}$" }))),
-    S3_ACCESS_KEY_ID: toStandardSchema(Type.String({ minLength: 1 })),
-    S3_SECRET_ACCESS_KEY: toStandardSchema(Type.String({ minLength: 1 })),
-    S3_BUCKET: toStandardSchema(Type.String({ minLength: 1 })),
-    S3_REGION: toStandardSchema(optional(Type.String({ minLength: 1 }))),
-    S3_ENDPOINT: toStandardSchema(optional(Type.String({ minLength: 1 }))),
-  },
-  runtimeEnvStrict: {
+const raw = Object.fromEntries(
+  Object.entries({
     NODE_ENV: process.env.NODE_ENV ?? "development",
     DATABASE_URL: process.env.DATABASE_URL,
     REDIS_URL: process.env.REDIS_URL,
@@ -74,19 +30,21 @@ export const env = createEnv({
     S3_BUCKET: process.env.S3_BUCKET,
     S3_REGION: process.env.S3_REGION,
     S3_ENDPOINT: process.env.S3_ENDPOINT,
-  },
-  onValidationError: (issues) => {
-    const issueSummary = issues
-      .map((issue) => `- ${formatIssuePath(issue.path)}: ${issue.message}`)
-      .join("\n");
+  }).map(([k, v]) => [k, v === "" ? undefined : v]),
+);
 
-    throw new Error(
-      [
-        "Invalid environment configuration.",
-        "Update your .env.local file with valid values for:",
-        issueSummary,
-      ].join("\n"),
-    );
-  },
-  emptyStringAsUndefined: true,
-});
+const errors = [...Value.Errors(EnvSchema, raw)];
+if (errors.length > 0) {
+  const summary = errors
+    .map((e) => `- ${e.path || "unknown"}: ${e.message}`)
+    .join("\n");
+  throw new Error(
+    [
+      "Invalid environment configuration.",
+      "Update your .env.local file with valid values for:",
+      summary,
+    ].join("\n"),
+  );
+}
+
+export const env = Value.Decode(EnvSchema, raw) as Static<typeof EnvSchema>;
