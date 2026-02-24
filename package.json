@@ -12,6 +12,7 @@
   },
   "scripts": {
     "dev": "bun run --watch src/index.ts",
+    "prepare": "husky",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
@@ -44,7 +45,16 @@
     "eslint-plugin-drizzle": "^0.2.3",
     "eslint-plugin-n": "^17.24.0",
     "globals": "^17.3.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
     "prettier": "^3.8.1"
+  },
+  "lint-staged": {
+    "**/*.{js,mjs,cjs,ts,tsx}": [
+      "eslint --fix --max-warnings=0",
+      "prettier --write"
+    ],
+    "**/*.{json,md,yml,yaml}": "prettier --write"
   },
   "module": "src/index.js"
 }
