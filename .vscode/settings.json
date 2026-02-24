@@ -2,14 +2,11 @@
   "editor.defaultFormatter": "esbenp.prettier-vscode",
   "editor.formatOnSave": true,
   "editor.codeActionsOnSave": {
-    "source.fixAll": "always",
+    "source.fixAll.eslint": "always",
     "source.organizeImports": "always"
   },
-  "files.associations": {
-    "*.css": "tailwindcss"
-  },
+  "eslint.useFlatConfig": true,
+  "eslint.validate": ["javascript", "typescript"],
   "typescript.tsdk": "node_modules/typescript/lib",
-  "[typescriptreact]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode"
-  }
+  "typescript.enablePromptUseWorkspaceTsdk": true
 }

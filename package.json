@@ -27,6 +27,8 @@
   "dependencies": {
     "@elysiajs/cors": "^1.4.1",
     "@elysiajs/jwt": "^1.4.0",
+    "@sinclair/typebox": "^0.34.48",
+    "@t3-oss/env-core": "^0.13.10",
     "better-auth": "^1.4.19",
     "drizzle-orm": "^0.45.1",
     "drizzle-typebox": "^0.3.3",
@@ -55,6 +57,9 @@
       "prettier --write"
     ],
     "**/*.{json,md,yml,yaml}": "prettier --write"
+  },
+  "overrides": {
+    "@sinclair/typebox": "0.34.48"
   },
   "module": "src/index.js"
 }
