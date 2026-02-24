@@ -2,6 +2,20 @@ import { type Static, type TSchema, Type } from "@sinclair/typebox";
 import { Value } from "@sinclair/typebox/value";
 import { createEnv, type StandardSchemaV1 } from "@t3-oss/env-core";
 
+const formatIssuePath = (
+  path?: readonly (PropertyKey | { key: PropertyKey })[],
+) => {
+  if (!path || path.length === 0) return "unknown";
+
+  return path
+    .map((segment) =>
+      typeof segment === "object" && segment !== null && "key" in segment
+        ? String(segment.key)
+        : String(segment),
+    )
+    .join(".");
+};
+
 const toStandardSchema = <T extends TSchema>(
   schema: T,
 ): StandardSchemaV1<unknown, Static<T>> => ({
@@ -60,6 +74,19 @@ export const env = createEnv({
     S3_BUCKET: process.env.S3_BUCKET,
     S3_REGION: process.env.S3_REGION,
     S3_ENDPOINT: process.env.S3_ENDPOINT,
+  },
+  onValidationError: (issues) => {
+    const issueSummary = issues
+      .map((issue) => `- ${formatIssuePath(issue.path)}: ${issue.message}`)
+      .join("\n");
+
+    throw new Error(
+      [
+        "Invalid environment configuration.",
+        "Update your .env.local file with valid values for:",
+        issueSummary,
+      ].join("\n"),
+    );
   },
   emptyStringAsUndefined: true,
 });

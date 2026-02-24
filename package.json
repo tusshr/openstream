@@ -21,6 +21,7 @@
     "auth:migrate": "bunx @better-auth/cli migrate",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
+    "typecheck": "tsc --noEmit",
     "format": "prettier . --write",
     "format:check": "prettier . --check"
   },
@@ -53,7 +54,7 @@
   },
   "lint-staged": {
     "**/*.{js,mjs,cjs,ts,tsx}": [
-      "eslint --fix --max-warnings=0",
+      "eslint --fix --max-warnings=0 --no-warn-ignored",
       "prettier --write"
     ],
     "**/*.{json,md,yml,yaml}": "prettier --write"

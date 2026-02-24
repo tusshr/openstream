@@ -11,21 +11,14 @@ export const user = pgTable(
   "user",
   {
     id: text("id").primaryKey(),
-    // better-auth required field (display name / full name)
     name: text("name").notNull(),
-    // separate columns for personalization, sorting, filtering
-    firstName: text("first_name"),
-    lastName: text("last_name"),
     email: text("email").notNull().unique(),
     emailVerified: boolean("email_verified").notNull(),
     image: text("image"),
     createdAt: timestamp("created_at").notNull(),
     updatedAt: timestamp("updated_at").notNull(),
   },
-  (t) => [
-    // email is already unique (implicit index), add a named idx for consistency
-    index("user_email_idx").on(t.email),
-  ],
+  (t) => [index("user_email_idx").on(t.email)],
 );
 
 export const session = pgTable(
@@ -43,7 +36,6 @@ export const session = pgTable(
       .references(() => user.id, { onDelete: "cascade" }),
   },
   (t) => [
-    // FK columns are NOT auto-indexed in PostgreSQL — critical for session lookups
     index("session_user_id_idx").on(t.userId),
     index("session_token_idx").on(t.token),
   ],
@@ -70,7 +62,6 @@ export const account = pgTable(
   },
   (t) => [
     index("account_user_id_idx").on(t.userId),
-    // composite index for social auth provider lookups
     index("account_provider_idx").on(t.accountId, t.providerId),
   ],
 );
@@ -85,10 +76,7 @@ export const verification = pgTable(
     createdAt: timestamp("created_at"),
     updatedAt: timestamp("updated_at"),
   },
-  (t) => [
-    // identifier is looked up on every email verification check
-    index("verification_identifier_idx").on(t.identifier),
-  ],
+  (t) => [index("verification_identifier_idx").on(t.identifier)],
 );
 
 export const twoFactor = pgTable(
@@ -101,8 +89,5 @@ export const twoFactor = pgTable(
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
   },
-  (t) => [
-    // one 2FA record per user, unique constraint + fast lookup
-    uniqueIndex("two_factor_user_id_idx").on(t.userId),
-  ],
+  (t) => [uniqueIndex("two_factor_user_id_idx").on(t.userId)],
 );
