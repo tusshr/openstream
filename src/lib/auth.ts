@@ -1,5 +1,6 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { admin } from "better-auth/plugins/admin";
 import { twoFactor } from "better-auth/plugins/two-factor";
 
 import { env } from "@/env";
@@ -81,7 +82,6 @@ export const auth = betterAuth({
 
   experimental: {
     // 2-3x performance improvement for DB queries via joins
-    // instead of multiple round-trips
     joins: true,
   },
 
@@ -100,6 +100,10 @@ export const auth = betterAuth({
       twoFactorCookieMaxAge: 600, // 10 min window to complete 2FA
       trustDeviceMaxAge: 30 * 24 * 60 * 60, // trust device for 30 days
     }),
+    // Role management — exposes user.role on every session
+    // Default role: "user". Promote via auth.api.setRole() or admin routes.
+    // Prepares the foundation for CASL ability definitions.
+    admin(),
   ],
 });
 

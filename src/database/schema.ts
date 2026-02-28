@@ -15,10 +15,15 @@ export const user = pgTable(
     email: text("email").notNull().unique(),
     emailVerified: boolean("email_verified").notNull(),
     image: text("image"),
+    // better-auth additionalFields
+    firstName: text("first_name"),
+    lastName: text("last_name"),
+    // role — managed by better-auth admin plugin (default: "user")
+    role: text("role").notNull().default("user"),
     createdAt: timestamp("created_at").notNull(),
     updatedAt: timestamp("updated_at").notNull(),
   },
-  (t) => [index("user_email_idx").on(t.email)],
+  // .unique() on email already creates an index — no separate index needed
 );
 
 export const session = pgTable(
