@@ -1,7 +1,7 @@
 {
   "name": "openstream",
   "description": "OpenStream is an open-source LMS platform for building secure, scalable digital learning experiences.",
-  "version": "1.0.50",
+  "version": "1.0.0",
   "type": "module",
   "author": {
     "name": "Tushar",
@@ -28,6 +28,7 @@
   "dependencies": {
     "@elysiajs/cors": "^1.4.1",
     "@elysiajs/jwt": "^1.4.0",
+    "@elysiajs/openapi": "^1.4.14",
     "@sinclair/typebox": "^0.34.48",
     "better-auth": "^1.4.19",
     "drizzle-orm": "^0.45.1",
