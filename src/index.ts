@@ -1,11 +1,13 @@
 import { Elysia, t } from "elysia";
 
 import { env } from "@/env";
-import { cors } from "@/lib/cors";
-import { openapi } from "@/lib/openapi";
 import { dataOf, ok } from "@/lib/response";
 import { betterAuth } from "@/modules/auth";
+import { health } from "@/modules/health";
 import { storage } from "@/modules/storage";
+import { cors } from "@/plugins/cors";
+import { openapi } from "@/plugins/openapi";
+import { securityHeaders } from "@/plugins/security-headers";
 
 type ValidationIssue = {
   path?: string;
@@ -21,9 +23,13 @@ type ValidationErrorShape = {
   errors?: ValidationIssue[];
 };
 
-const normalizeValidationError = (
+// Elysia surfaces validation errors with a JSON-encoded message string. We
+// unwrap it so the client receives structured fields instead of a stringified
+// blob. If the surface changes upstream, the heuristic falls back gracefully
+// to passing the original error through.
+function normalizeValidationError(
   validationError: ValidationErrorShape,
-): ValidationErrorShape => {
+): ValidationErrorShape {
   const rawMessage = validationError.message;
   if (typeof rawMessage !== "string") return validationError;
 
@@ -45,12 +51,39 @@ const normalizeValidationError = (
   } catch {
     return validationError;
   }
-};
+}
+
+function buildValidationResponse(error: ValidationErrorShape): Response {
+  const normalized = normalizeValidationError(error);
+  return Response.json(
+    {
+      error: "Validation failed",
+      message:
+        normalized.message ??
+        "Request validation failed. Please check your input.",
+      ...(normalized.on ? { on: normalized.on } : {}),
+      ...(normalized.property ? { property: normalized.property } : {}),
+      ...(normalized.summary ? { summary: normalized.summary } : {}),
+      ...(Array.isArray(normalized.errors)
+        ? {
+            issues: normalized.errors.map((issue) => ({
+              ...(issue.path ? { path: issue.path } : {}),
+              ...(issue.message ? { message: issue.message } : {}),
+              ...(issue.summary ? { summary: issue.summary } : {}),
+            })),
+          }
+        : {}),
+    },
+    { status: 422 },
+  );
+}
 
 export const app = new Elysia()
+  .use(securityHeaders)
   .use(cors)
   .use(openapi)
-  .get("/", "OpenStream", {
+  .use(health)
+  .get("/", () => "OpenStream", {
     response: {
       200: t.String({ description: "OpenStream service identifier" }),
     },
@@ -59,60 +92,15 @@ export const app = new Elysia()
       tags: ["System"],
     },
   })
-  .get(
-    "/health",
-    {
-      status: "OK",
-      timestamp: new Date().toISOString(),
-      uptime: process.uptime(),
-    },
-    {
-      response: {
-        200: t.String({ description: "OpenStream service identifier" }),
-      },
-      detail: {
-        summary: "Service name",
-        tags: ["System"],
-      },
-    },
-  )
   .onError(({ code, error }) => {
-    // Always log the real error internally — never expose it to the client
+    // Always log the real error internally; never expose it to the client.
     console.error(`[${new Date().toISOString()}] [${code}]`, error);
 
     switch (code) {
       case "NOT_FOUND":
         return Response.json({ error: "Not found" }, { status: 404 });
-      case "VALIDATION": {
-        const validationError = normalizeValidationError(
-          error as ValidationErrorShape,
-        );
-        return Response.json(
-          {
-            error: "Validation failed",
-            message:
-              validationError.message ??
-              "Request validation failed. Please check your input.",
-            ...(validationError.on ? { on: validationError.on } : {}),
-            ...(validationError.property
-              ? { property: validationError.property }
-              : {}),
-            ...(validationError.summary
-              ? { summary: validationError.summary }
-              : {}),
-            ...(Array.isArray(validationError.errors)
-              ? {
-                  issues: validationError.errors.map((issue) => ({
-                    ...(issue.path ? { path: issue.path } : {}),
-                    ...(issue.message ? { message: issue.message } : {}),
-                    ...(issue.summary ? { summary: issue.summary } : {}),
-                  })),
-                }
-              : {}),
-          },
-          { status: 422 },
-        );
-      }
+      case "VALIDATION":
+        return buildValidationResponse(error as ValidationErrorShape);
       case "PARSE":
         return Response.json(
           { error: "Invalid request body" },
@@ -120,32 +108,27 @@ export const app = new Elysia()
         );
     }
 
-    // Unknown errors (DB failures, unhandled exceptions) — never leak internals
     return Response.json({ error: "Internal server error" }, { status: 500 });
   })
   .use(betterAuth)
   .group("/api", (app) =>
-    app
-      .use(storage) // /api/storage/**
-      // example protected route
-      .get("/me", ({ user }) => ok(user), {
-        auth: true,
-        response: {
-          200: dataOf(
-            t.Object({
-              id: t.String({ minLength: 1 }),
-              email: t.String({ format: "email" }),
-            }),
-          ),
-        },
-        detail: {
-          summary: "Get current user",
-          description:
-            "Returns the authenticated user from the active session.",
-          tags: ["Users"],
-          security: [{ sessionCookie: [] }],
-        },
-      }),
+    app.use(storage).get("/me", ({ user }) => ok(user), {
+      auth: true,
+      response: {
+        200: dataOf(
+          t.Object({
+            id: t.String({ minLength: 1 }),
+            email: t.String({ format: "email" }),
+          }),
+        ),
+      },
+      detail: {
+        summary: "Get current user",
+        description: "Returns the authenticated user from the active session.",
+        tags: ["Users"],
+        security: [{ sessionCookie: [] }],
+      },
+    }),
   )
   .listen(env.PORT ? Number(env.PORT) : 8080);
 
