@@ -5,15 +5,19 @@ import { betterAuth } from "@/modules/auth";
 
 import {
   deleteResponseSchema,
+  type ForbiddenResponse,
   forbiddenResponseSchema,
   keyQuerySchema,
   presignedResponseSchema,
   presignUploadBodySchema,
+  type UnsupportedMediaTypeResponse,
   unsupportedMediaTypeResponseSchema,
 } from "./model";
 import { type ActingUser, storageService } from "./service";
 
-type AuthedUser = { id: string; role?: string };
+// `role` on better-auth's user is `string | null | undefined`. We collapse it
+// to a plain string at the seam so the service interface stays clean.
+type AuthedUser = { id: string; role?: string | null };
 
 function toActingUser(user: AuthedUser): ActingUser {
   return { id: user.id, role: user.role ?? "user" };
@@ -34,11 +38,12 @@ export const storage = new Elysia({ prefix: "/storage", name: "storage" })
     ({ body, user }) => {
       const result = storageService.presignUpload(body, toActingUser(user));
       if (result.kind === "unsupported-media-type") {
-        return status(415, {
-          error: "Unsupported Media Type" as const,
+        const failure: UnsupportedMediaTypeResponse = {
+          error: "Unsupported Media Type",
           message: `contentType '${result.contentType}' is not allowed for purpose '${result.purpose}'.`,
           allowedMimes: [...result.allowedMimes],
-        });
+        };
+        return status(415, failure);
       }
       return ok(result.data);
     },
@@ -66,10 +71,11 @@ export const storage = new Elysia({ prefix: "/storage", name: "storage" })
         toActingUser(user),
       );
       if (result.kind === "forbidden") {
-        return status(403, {
-          error: "Forbidden" as const,
+        const failure: ForbiddenResponse = {
+          error: "Forbidden",
           message: result.reason,
-        });
+        };
+        return status(403, failure);
       }
       return ok(result.data);
     },
@@ -97,10 +103,11 @@ export const storage = new Elysia({ prefix: "/storage", name: "storage" })
         toActingUser(user),
       );
       if (result.kind === "forbidden") {
-        return status(403, {
-          error: "Forbidden" as const,
+        const failure: ForbiddenResponse = {
+          error: "Forbidden",
           message: result.reason,
-        });
+        };
+        return status(403, failure);
       }
       return ok(result.data);
     },

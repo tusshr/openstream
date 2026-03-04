@@ -1,10 +1,6 @@
 import { Elysia } from "elysia";
 
-import {
-  livenessResponseSchema,
-  type ReadinessResponse,
-  readinessResponseSchema,
-} from "./model";
+import { livenessResponseSchema, readinessResponseSchema } from "./model";
 import { healthService } from "./service";
 
 function buildLivenessResponse() {
@@ -13,20 +9,6 @@ function buildLivenessResponse() {
     uptime: process.uptime(),
     timestamp: new Date().toISOString(),
   };
-}
-
-// Readiness shares one handler between /readyz and /health (alias). 503 is set
-// on the response object so k8s / load balancers can drain pods correctly.
-async function buildReadinessResponse({
-  set,
-}: {
-  set: { status?: number };
-}): Promise<ReadinessResponse> {
-  const result = await healthService.checkReadiness();
-  if (result.status !== "ok") {
-    set.status = 503;
-  }
-  return result;
 }
 
 export const health = new Elysia({ name: "health" })
@@ -43,27 +25,43 @@ export const health = new Elysia({ name: "health" })
       tags: ["System"],
     },
   })
-  .get("/readyz", (ctx) => buildReadinessResponse(ctx), {
-    response: {
-      200: "health.readiness.response",
-      503: "health.readiness.response",
+  .get(
+    "/readyz",
+    async ({ set }) => {
+      const result = await healthService.checkReadiness();
+      if (result.status !== "ok") set.status = 503;
+      return result;
     },
-    detail: {
-      summary: "Readiness probe",
-      description:
-        "Pings Postgres and Redis. Returns 503 if any dependency is unreachable.",
-      tags: ["System"],
+    {
+      response: {
+        200: "health.readiness.response",
+        503: "health.readiness.response",
+      },
+      detail: {
+        summary: "Readiness probe",
+        description:
+          "Pings Postgres and Redis. Returns 503 if any dependency is unreachable.",
+        tags: ["System"],
+      },
     },
-  })
-  .get("/health", (ctx) => buildReadinessResponse(ctx), {
-    response: {
-      200: "health.readiness.response",
-      503: "health.readiness.response",
+  )
+  .get(
+    "/health",
+    async ({ set }) => {
+      const result = await healthService.checkReadiness();
+      if (result.status !== "ok") set.status = 503;
+      return result;
     },
-    detail: {
-      summary: "Readiness probe (alias of /readyz)",
-      description:
-        "Retained for monitors pointed at /health. Identical to /readyz.",
-      tags: ["System"],
+    {
+      response: {
+        200: "health.readiness.response",
+        503: "health.readiness.response",
+      },
+      detail: {
+        summary: "Readiness probe (alias of /readyz)",
+        description:
+          "Retained for monitors pointed at /health. Identical to /readyz.",
+        tags: ["System"],
+      },
     },
-  });
+  );
