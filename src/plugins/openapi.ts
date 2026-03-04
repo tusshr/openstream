@@ -1,6 +1,18 @@
 import { openapi as openApiPlugin } from "@elysiajs/openapi";
+import { Elysia, status } from "elysia";
 
-export const openapi = openApiPlugin({
+import { env } from "@/env";
+import { auth } from "@/lib/auth";
+
+const DOCS_PATH_PREFIXES = ["/openapi", "/scalar", "/api-1"] as const;
+
+function looksLikeDocsRequest(pathname: string): boolean {
+  return DOCS_PATH_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+}
+
+const docsPlugin = openApiPlugin({
   documentation: {
     info: {
       title: "OpenStream API",
@@ -27,9 +39,6 @@ export const openapi = openApiPlugin({
       },
     },
   },
-  exclude: {
-    // paths: [/^\/api\/auth\//],
-  },
   scalar: {
     hideClientButton: false,
     showSidebar: false,
@@ -38,7 +47,7 @@ export const openapi = openApiPlugin({
     operationTitleSource: "summary",
     theme: "default",
     persistAuth: false,
-    telemetry: true,
+    telemetry: false,
     layout: "classic",
     isEditable: false,
     isLoading: false,
@@ -62,6 +71,27 @@ export const openapi = openApiPlugin({
     },
     default: false,
     slug: "api-1",
-    title: "API #1",
+    title: "OpenStream API",
   },
 });
+
+// In production we don't want anonymous reconnaissance of the API. The docs
+// are still served, but only to authenticated admins. Non-admins (including
+// anonymous callers) get 404, which is intentional: 403 would confirm the path
+// exists. In development, the wrapper is a no-op pass-through.
+export const openapi = new Elysia({ name: "openapi-docs" })
+  .onRequest(async ({ request }) => {
+    if (env.NODE_ENV !== "production") return;
+
+    const url = new URL(request.url);
+    if (!looksLikeDocsRequest(url.pathname)) return;
+
+    const session = await auth.api
+      .getSession({ headers: request.headers })
+      .catch(() => null);
+
+    if (!session || session.user.role !== "admin") {
+      return status(404, { error: "Not Found" });
+    }
+  })
+  .use(docsPlugin);
