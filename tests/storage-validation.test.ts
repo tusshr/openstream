@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { getJson, postJson } from "./helpers/request";
+import { deleteJson, getJson, postJson } from "./helpers/request";
 
 // These tests cover the schema-level rejection paths on the storage routes.
 // They run without a session because Elysia's body/query validation fires
@@ -53,7 +53,7 @@ describe("GET /api/storage/presign/download — query validation", () => {
 
 describe("DELETE /api/storage/files — query validation", () => {
   test("missing key → 422", async () => {
-    const res = await getJson("/api/storage/files", { method: "DELETE" });
+    const res = await deleteJson("/api/storage/files");
     expect(res.status).toBe(422);
   });
 });

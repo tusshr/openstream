@@ -34,6 +34,13 @@ export function getJson<T = unknown>(
   return callApp<T>(path, { ...init, method: "GET" });
 }
 
+export function deleteJson<T = unknown>(
+  path: string,
+  init: Omit<RequestInit, "method" | "body"> = {},
+): Promise<ApiResponse<T>> {
+  return callApp<T>(path, { ...init, method: "DELETE" });
+}
+
 export function postJson<T = unknown>(
   path: string,
   body: unknown,
