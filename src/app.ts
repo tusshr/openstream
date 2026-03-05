@@ -1,10 +1,11 @@
 import { Elysia, t } from "elysia";
 
 import { dataOf, ok } from "@/lib/response";
-import { betterAuth } from "@/modules/auth";
+import { authMacro, authRoutes } from "@/modules/auth";
 import { health } from "@/modules/health";
 import { storage } from "@/modules/storage";
 import { cors } from "@/plugins/cors";
+import { requestLogger } from "@/plugins/logger";
 import { openapi } from "@/plugins/openapi";
 import { securityHeaders } from "@/plugins/security-headers";
 
@@ -81,15 +82,14 @@ function buildValidationResponse(error: ValidationErrorShape): Response {
 // the only consumer that calls `.listen()`. Tests import from here and drive
 // the app via `app.handle(new Request(...))`.
 //
-// onError is registered FIRST so it covers every subsequent route — including
-// the implicit NOT_FOUND for unmatched paths. Elysia's "order matters" rule
-// means a mid-chain onError would only catch errors from routes registered
-// after it. Keep it at the top.
+// Order matters. `requestLogger` is first so it assigns a request id and
+// logs every request — including unmatched ones. `onError` follows so its
+// response-shaping covers every subsequent route including the implicit
+// NOT_FOUND. The requestLogger's own onError logs the failure; this one
+// returns the user-facing envelope.
 export const app = new Elysia()
+  .use(requestLogger)
   .onError(({ code, error }) => {
-    // Always log the real error internally; never expose it to the client.
-    console.error(`[${new Date().toISOString()}] [${code}]`, error);
-
     switch (code) {
       case "NOT_FOUND":
         return Response.json({ error: "Not found" }, { status: 404 });
@@ -117,7 +117,8 @@ export const app = new Elysia()
       tags: ["System"],
     },
   })
-  .use(betterAuth)
+  .use(authRoutes)
+  .use(authMacro)
   .group("/api", (app) =>
     app.use(storage).get("/me", ({ user }) => ok(user), {
       auth: true,

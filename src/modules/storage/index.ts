@@ -1,7 +1,7 @@
 import { Elysia, status } from "elysia";
 
 import { dataOf, ok } from "@/lib/response";
-import { betterAuth } from "@/modules/auth";
+import { authMacro } from "@/modules/auth";
 
 import {
   deleteResponseSchema,
@@ -24,7 +24,7 @@ function toActingUser(user: AuthedUser): ActingUser {
 }
 
 export const storage = new Elysia({ prefix: "/storage", name: "storage" })
-  .use(betterAuth)
+  .use(authMacro)
   .model({
     "storage.upload.body": presignUploadBodySchema,
     "storage.key.query": keyQuerySchema,
