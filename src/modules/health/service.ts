@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 
 import { db } from "@/database";
+import { logger } from "@/lib/logger";
 import { redis } from "@/lib/redis";
 
 import type { CheckStatus, ReadinessResponse } from "./model";
@@ -34,7 +35,7 @@ async function probeDatabase(): Promise<CheckStatus> {
     );
     return "ok";
   } catch (error) {
-    console.error("[health] database probe failed:", error);
+    logger.warn({ err: error }, "health: database probe failed");
     return "down";
   }
 }
@@ -44,7 +45,7 @@ async function probeRedis(): Promise<CheckStatus> {
     await withTimeout(redis.send("PING", []), DEPENDENCY_TIMEOUT_MS, "redis");
     return "ok";
   } catch (error) {
-    console.error("[health] redis probe failed:", error);
+    logger.warn({ err: error }, "health: redis probe failed");
     return "down";
   }
 }

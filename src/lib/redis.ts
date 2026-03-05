@@ -1,6 +1,7 @@
 import { RedisClient } from "bun";
 
 import { env } from "@/env";
+import { logger } from "@/lib/logger";
 
 export const redis = new RedisClient(env.REDIS_URL, {
   autoReconnect: true,
@@ -9,5 +10,7 @@ export const redis = new RedisClient(env.REDIS_URL, {
 });
 
 redis.onclose = (error) => {
-  if (error) console.error("[redis] disconnected:", error.message);
+  if (error) {
+    logger.warn({ err: error }, "redis: connection closed");
+  }
 };

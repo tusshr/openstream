@@ -1,6 +1,7 @@
 import { Elysia } from "elysia";
 
 import { auth } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 
 // Two separate concerns split into two plugins.
 //
@@ -28,7 +29,7 @@ export const authMacro = new Elysia({ name: "auth-macro" }).macro({
       const session = await auth.api
         .getSession({ headers })
         .catch((error: unknown) => {
-          console.error("[auth] getSession failed:", error);
+          logger.warn({ err: error }, "auth: getSession failed");
           return null;
         });
 
