@@ -80,20 +80,12 @@ function buildValidationResponse(error: ValidationErrorShape): Response {
 // The application instance, fully wired but NOT listening. `src/index.ts` is
 // the only consumer that calls `.listen()`. Tests import from here and drive
 // the app via `app.handle(new Request(...))`.
+//
+// onError is registered FIRST so it covers every subsequent route — including
+// the implicit NOT_FOUND for unmatched paths. Elysia's "order matters" rule
+// means a mid-chain onError would only catch errors from routes registered
+// after it. Keep it at the top.
 export const app = new Elysia()
-  .use(securityHeaders)
-  .use(cors)
-  .use(openapi)
-  .use(health)
-  .get("/", () => "OpenStream", {
-    response: {
-      200: t.String({ description: "OpenStream service identifier" }),
-    },
-    detail: {
-      summary: "Service name",
-      tags: ["System"],
-    },
-  })
   .onError(({ code, error }) => {
     // Always log the real error internally; never expose it to the client.
     console.error(`[${new Date().toISOString()}] [${code}]`, error);
@@ -111,6 +103,19 @@ export const app = new Elysia()
     }
 
     return Response.json({ error: "Internal server error" }, { status: 500 });
+  })
+  .use(securityHeaders)
+  .use(cors)
+  .use(openapi)
+  .use(health)
+  .get("/", () => "OpenStream", {
+    response: {
+      200: t.String({ description: "OpenStream service identifier" }),
+    },
+    detail: {
+      summary: "Service name",
+      tags: ["System"],
+    },
   })
   .use(betterAuth)
   .group("/api", (app) =>
