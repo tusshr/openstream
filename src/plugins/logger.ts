@@ -5,6 +5,19 @@ import { logger as baseLogger } from "@/lib/logger";
 
 const REQUEST_ID_HEADER = "x-request-id";
 
+type RequestState = {
+  requestId: string;
+  startedAt: number;
+  failureLogged?: boolean;
+};
+
+// Per-request state keyed by the Request object. Elysia's `store` is *global*
+// (shared across requests), so it cannot safely carry per-request fields:
+// concurrent requests would clobber each other's request id, and the
+// `failureLogged` flag would leak between requests. A WeakMap is the canonical
+// side-table pattern — entries are reclaimed when the Request is GC'd.
+const requestState = new WeakMap<Request, RequestState>();
+
 function readOrGenerateRequestId(headers: Headers): string {
   const inbound = headers.get(REQUEST_ID_HEADER);
   if (inbound && inbound.length > 0 && inbound.length <= 128) {
@@ -24,60 +37,48 @@ function pathOf(request: Request): string {
   }
 }
 
-// Per-request observability plugin. Wires three things:
+function durationFrom(startedAt: number): number {
+  return Math.round((performance.now() - startedAt) * 1000) / 1000;
+}
+
+// Per-request observability plugin. Wires four hooks:
 //
-//  1. `onRequest`: extract or generate `X-Request-Id`, stash it + a start
-//     time on the request store, and echo the id back on the response so
-//     load balancers / clients can correlate.
-//  2. `derive`: attach a pino child logger to the request context. Every
-//     log line emitted via `ctx.log` automatically carries `requestId`.
-//  3. `onAfterResponse` and `onError`: emit completion / failure logs with
-//     method, path, status, and duration.
+//  1. `onRequest`: extract or generate X-Request-Id, record start time in the
+//     per-request side-table, and echo the id back on the response so load
+//     balancers / clients can correlate.
+//  2. `derive`: attach a pino child logger (`ctx.log`) carrying requestId for
+//     the duration of the handler. Only runs for matched routes.
+//  3. `onError`: log the failure and mark the request so the completion log
+//     is skipped (set.status doesn't reflect Response.json status codes, so
+//     a second log line would carry a misleading status).
+//  4. `onAfterResponse`: log the completion for successful requests.
 //
-// All hooks are scoped `as: "global"` so they cover routes registered after
-// the plugin is mounted, including nested plugin instances.
+// onError and onAfterResponse are scoped `as: "global"` so they fire even for
+// unmatched routes (404). `derive` doesn't run for those, which is why we
+// construct child loggers from the side-table directly in those two hooks.
 export const requestLogger = new Elysia({ name: "request-logger" })
-  .onRequest(({ request, set, store }) => {
-    // onRequest fires for every request that reaches the instance — no scope
-    // option needed (and Elysia's typing doesn't accept one for this hook).
+  .onRequest(({ request, set }) => {
     const requestId = readOrGenerateRequestId(request.headers);
     set.headers[REQUEST_ID_HEADER] = requestId;
-    (store as { requestId?: string; startedAt?: number }).requestId = requestId;
-    (store as { requestId?: string; startedAt?: number }).startedAt =
-      performance.now();
+    requestState.set(request, {
+      requestId,
+      startedAt: performance.now(),
+    });
   })
-  .derive({ as: "global" }, ({ store }): { log: Logger } => {
-    const requestId = (store as { requestId?: string }).requestId;
+  .derive({ as: "global" }, ({ request }): { log: Logger } => {
+    const state = requestState.get(request);
     return {
-      log: baseLogger.child({ requestId }),
+      log: baseLogger.child({ requestId: state?.requestId }),
     };
   })
-  .onAfterResponse({ as: "global" }, ({ request, set, store, log }) => {
-    const startedAt = (store as { startedAt?: number }).startedAt;
-    const durationMs =
-      startedAt !== undefined
-        ? Math.round((performance.now() - startedAt) * 1000) / 1000
-        : undefined;
+  .onError({ as: "global" }, ({ request, error, code }) => {
+    const state = requestState.get(request);
+    if (state) state.failureLogged = true;
 
-    log.info(
-      {
-        method: request.method,
-        path: pathOf(request),
-        status: set.status ?? 200,
-        durationMs,
-      },
-      "request completed",
-    );
-  })
-  .onError({ as: "global" }, ({ request, error, code, store }) => {
-    const startedAt = (store as { startedAt?: number }).startedAt;
-    const requestId = (store as { requestId?: string }).requestId;
     const durationMs =
-      startedAt !== undefined
-        ? Math.round((performance.now() - startedAt) * 1000) / 1000
-        : undefined;
+      state !== undefined ? durationFrom(state.startedAt) : undefined;
 
-    baseLogger.child({ requestId }).error(
+    baseLogger.child({ requestId: state?.requestId }).error(
       {
         method: request.method,
         path: pathOf(request),
@@ -86,5 +87,19 @@ export const requestLogger = new Elysia({ name: "request-logger" })
         durationMs,
       },
       "request failed",
+    );
+  })
+  .onAfterResponse({ as: "global" }, ({ request, set }) => {
+    const state = requestState.get(request);
+    if (!state || state.failureLogged) return;
+
+    baseLogger.child({ requestId: state.requestId }).info(
+      {
+        method: request.method,
+        path: pathOf(request),
+        status: set.status ?? 200,
+        durationMs: durationFrom(state.startedAt),
+      },
+      "request completed",
     );
   });

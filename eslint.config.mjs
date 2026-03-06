@@ -33,6 +33,9 @@ export default defineConfig([
       globals: {
         ...globals.node,
         ...globals.es2021,
+        // Bun runtime globals. bun-types provides the TS shape but ESLint's
+        // no-undef rule needs them declared here separately.
+        Bun: "readonly",
       },
       parserOptions: {
         project: "./tsconfig.json",
