@@ -45,7 +45,9 @@ const baseOptions: LoggerOptions = {
   // ISO timestamp (default is epoch ms). Easier to read in raw stdout.
   timestamp: pino.stdTimeFunctions.isoTime,
   base: {
-    service: "openstream-api",
+    // `SERVICE_NAME` is set per entry point via the npm script (api vs
+    // worker). Defaults to api so a plain `bun src/index.ts` stays sensible.
+    service: process.env.SERVICE_NAME ?? "openstream-api",
     env: env.NODE_ENV,
   },
   // No in-process transport. Sync stdout is what containerized log
