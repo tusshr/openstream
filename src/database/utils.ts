@@ -51,8 +51,8 @@ export const spread = <
       table = schema;
   }
 
-  for (const key of Object.keys(table.properties))
-    newSchema[key] = table.properties[key];
+  for (const [key, value] of Object.entries(table.properties))
+    newSchema[key] = value;
 
   return newSchema as Spread<T, Mode>;
 };
@@ -65,7 +65,7 @@ export const spreads = <
   mode?: Mode,
 ): { [K in keyof T]: Spread<T[K], Mode> } => {
   const newSchema: Record<string, unknown> = {};
-  for (const key of Object.keys(models))
-    newSchema[key] = spread(models[key], mode);
+  for (const [key, value] of Object.entries(models))
+    newSchema[key] = spread(value, mode);
   return newSchema as { [K in keyof T]: Spread<T[K], Mode> };
 };

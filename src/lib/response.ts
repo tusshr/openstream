@@ -26,13 +26,17 @@ export function dataOf<T extends TSchema>(schema: T) {
 
 // Full success envelope with status/meta for endpoints that need richer
 // metadata. The {data:T} envelope above is the project default; opt into this
-// one only when you genuinely need meta/links.
+// one only when you genuinely need meta/links. We omit `links` from the
+// returned object when not provided rather than setting it to `undefined`,
+// because `exactOptionalPropertyTypes` distinguishes the two.
 export function okWithMeta<T>(
   data: T,
   meta: ApiMeta,
   links?: ApiLinks,
 ): ApiSuccessResponse<T> {
-  return { status: "success", data, meta, links };
+  return links === undefined
+    ? { status: "success", data, meta }
+    : { status: "success", data, meta, links };
 }
 
 // Full accepted envelope for async/process-later endpoints.

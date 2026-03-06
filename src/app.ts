@@ -9,18 +9,21 @@ import { requestLogger } from "@/plugins/logger";
 import { openapi } from "@/plugins/openapi";
 import { securityHeaders } from "@/plugins/security-headers";
 
+// Optional fields written as `?: T | undefined` (rather than `?: T`) so the
+// spread + ?? fallbacks below can set them to `undefined` explicitly without
+// violating `exactOptionalPropertyTypes`.
 type ValidationIssue = {
-  path?: string;
-  message?: string;
-  summary?: string;
+  path?: string | undefined;
+  message?: string | undefined;
+  summary?: string | undefined;
 };
 
 type ValidationErrorShape = {
-  message?: string;
-  on?: string;
-  property?: string;
-  summary?: string;
-  errors?: ValidationIssue[];
+  message?: string | undefined;
+  on?: string | undefined;
+  property?: string | undefined;
+  summary?: string | undefined;
+  errors?: ValidationIssue[] | undefined;
 };
 
 // Elysia surfaces validation errors with a JSON-encoded message string. We

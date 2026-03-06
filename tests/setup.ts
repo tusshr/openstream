@@ -20,17 +20,19 @@ mock.module("@/lib/redis", () => ({
     },
     send: async (command: string, args: string[] = []) => {
       const upper = command.toUpperCase();
+      const [first, second] = args;
+
       if (upper === "PING") return "PONG";
-      if (upper === "SET" && args.length >= 2) {
-        store.set(args[0], args[1]);
+      if (upper === "SET" && first !== undefined && second !== undefined) {
+        store.set(first, second);
         return "OK";
       }
-      if (upper === "GET" && args.length >= 1) {
-        return store.get(args[0]) ?? null;
+      if (upper === "GET" && first !== undefined) {
+        return store.get(first) ?? null;
       }
-      if (upper === "DEL" && args.length >= 1) {
-        const had = store.has(args[0]);
-        store.delete(args[0]);
+      if (upper === "DEL" && first !== undefined) {
+        const had = store.has(first);
+        store.delete(first);
         return had ? 1 : 0;
       }
       return null;
