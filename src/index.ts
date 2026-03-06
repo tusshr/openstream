@@ -1,13 +1,13 @@
 import { app } from "@/app";
 import { env } from "@/env";
 import { logger } from "@/lib/logger";
-import { registerGracefulShutdown } from "@/lib/shutdown";
+import { httpServer, registerGracefulShutdown } from "@/lib/shutdown";
 
 const port = env.PORT ? Number(env.PORT) : 8080;
 
 app.listen(port);
 
-registerGracefulShutdown(app.server ?? null);
+registerGracefulShutdown([httpServer(app.server ?? null)]);
 
 logger.info(
   {

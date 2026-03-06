@@ -6,25 +6,39 @@ import { redis } from "@/lib/redis";
 
 const SHUTDOWN_SIGNALS = ["SIGTERM", "SIGINT"] as const;
 
-// If clean shutdown takes longer than this, exit non-zero so the orchestrator
-// (Coolify / k8s / systemd) treats it as a crash and notices. The number is
-// tuned to fit inside a typical k8s `terminationGracePeriodSeconds` of 30s
-// while leaving headroom for the orchestrator to send SIGKILL on overrun.
+// Generous, but tuned to fit inside the typical k8s
+// terminationGracePeriodSeconds: 30s. Coolify allows configuration too.
 const FORCE_EXIT_TIMEOUT_MS = 15_000;
 
 let shuttingDown = false;
 
+// A closeable resource is anything we own that needs draining before exit:
+// HTTP servers, BullMQ workers, BullMQ queues, etc. Each step is named so
+// shutdown logs make the order of operations obvious.
+export type Closeable = {
+  readonly name: string;
+  close(): void | Promise<void>;
+};
+
+// Adapters so call sites can pass framework objects directly instead of
+// hand-rolling the { name, close } wrapper every time.
+export function httpServer(server: Server<unknown> | null): Closeable | null {
+  if (!server) return null;
+  return {
+    name: "http server",
+    close: () => server.stop(),
+  };
+}
+
 async function runShutdown(
-  server: Server<unknown> | null,
   signal: string,
+  resources: readonly Closeable[],
 ): Promise<void> {
   if (shuttingDown) return;
   shuttingDown = true;
 
   logger.info({ signal }, "shutdown initiated");
 
-  // Force-exit timer guards against any of the close calls hanging. unref()
-  // so the timer doesn't keep the loop alive once cleanup is done.
   const forceExitTimer = setTimeout(() => {
     logger.fatal(
       { timeoutMs: FORCE_EXIT_TIMEOUT_MS },
@@ -34,22 +48,38 @@ async function runShutdown(
   }, FORCE_EXIT_TIMEOUT_MS);
   forceExitTimer.unref();
 
-  try {
-    if (server) {
-      logger.info("http server: stop accepting new requests");
-      await server.stop();
-      logger.info("http server: stopped");
+  // User-supplied resources first (HTTP servers, BullMQ workers) so they
+  // stop accepting new work before we tear down the underlying connections.
+  for (const resource of resources) {
+    try {
+      logger.info({ resource: resource.name }, "closing");
+      await resource.close();
+      logger.info({ resource: resource.name }, "closed");
+    } catch (error) {
+      logger.error(
+        { resource: resource.name, err: error },
+        "error while closing resource",
+      );
     }
+  }
 
-    logger.info("redis: closing");
+  // Then the shared infra. These are imported singletons; both api and
+  // worker hold connections to them, so the shutdown helper owns their
+  // lifecycle regardless of which process is exiting.
+  try {
+    logger.info({ resource: "redis" }, "closing");
     redis.close();
-    logger.info("redis: closed");
-
-    logger.info("database: closing pool");
-    await db.$client.end();
-    logger.info("database: closed");
+    logger.info({ resource: "redis" }, "closed");
   } catch (error) {
-    logger.error({ err: error }, "error during shutdown");
+    logger.error({ err: error }, "error closing redis");
+  }
+
+  try {
+    logger.info({ resource: "database" }, "closing");
+    await db.$client.end();
+    logger.info({ resource: "database" }, "closed");
+  } catch (error) {
+    logger.error({ err: error }, "error closing database");
   }
 
   clearTimeout(forceExitTimer);
@@ -57,13 +87,17 @@ async function runShutdown(
   process.exit(0);
 }
 
-// Registers SIGTERM and SIGINT handlers that drain the HTTP server, close
-// external connections, then exit. Safe to call once at boot — the internal
-// `shuttingDown` flag makes repeated signals a no-op.
-export function registerGracefulShutdown(server: Server<unknown> | null): void {
+// Registers SIGTERM + SIGINT handlers. The `resources` array drains in
+// declaration order before redis/db are closed. Safe to call once at boot;
+// repeated signals are no-ops via the `shuttingDown` flag.
+export function registerGracefulShutdown(
+  resources: ReadonlyArray<Closeable | null>,
+): void {
+  const filtered = resources.filter((r): r is Closeable => r !== null);
+
   for (const signal of SHUTDOWN_SIGNALS) {
     process.on(signal, () => {
-      void runShutdown(server, signal);
+      void runShutdown(signal, filtered);
     });
   }
 }
