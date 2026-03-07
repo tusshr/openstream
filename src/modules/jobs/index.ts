@@ -10,6 +10,12 @@ import {
   parseEchoPayload,
   processEcho,
 } from "./echo";
+import {
+  EMAIL_JOB_NAME,
+  type EmailPayload,
+  parseEmailPayload,
+  processEmail,
+} from "./email";
 
 // Single shared queue for now. Multiple queues are useful when jobs have
 // very different rate-limit / priority needs; once that emerges, split per
@@ -44,6 +50,13 @@ export async function enqueueEcho(payload: EchoPayload): Promise<void> {
   await getQueue().add(ECHO_JOB_NAME, payload);
 }
 
+export async function enqueueEmail(payload: EmailPayload): Promise<void> {
+  // Email retries are critical — a 500 from the SMTP relay or a transient
+  // network blip shouldn't drop a verification email on the floor. We rely
+  // on the queue's default 3-attempt exponential backoff (set above).
+  await getQueue().add(EMAIL_JOB_NAME, payload);
+}
+
 // Called from src/worker.ts at boot. Wires every job name to its processor.
 // Returns the Worker instance so the shutdown handler can await its close().
 export function startWorker(): Worker {
@@ -56,6 +69,10 @@ export function startWorker(): Worker {
         case ECHO_JOB_NAME: {
           const payload = parseEchoPayload(job.data);
           return processEcho(payload) satisfies EchoResult;
+        }
+        case EMAIL_JOB_NAME: {
+          const payload = parseEmailPayload(job.data);
+          return await processEmail(payload);
         }
         default:
           throw new Error(`Unknown job name: ${job.name}`);
