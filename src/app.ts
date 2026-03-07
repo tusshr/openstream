@@ -5,6 +5,7 @@ import { authMacro, authRoutes } from "@/modules/auth";
 import { health } from "@/modules/health";
 import { storage } from "@/modules/storage";
 import { cors } from "@/plugins/cors";
+import { csrf } from "@/plugins/csrf";
 import { requestLogger } from "@/plugins/logger";
 import { openapi } from "@/plugins/openapi";
 import { securityHeaders } from "@/plugins/security-headers";
@@ -109,6 +110,7 @@ export const app = new Elysia()
   })
   .use(securityHeaders)
   .use(cors)
+  .use(csrf)
   .use(openapi)
   .use(health)
   .get("/", () => "OpenStream", {
