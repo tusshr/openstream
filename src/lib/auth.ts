@@ -4,6 +4,7 @@ import { admin } from "better-auth/plugins/admin";
 import { twoFactor } from "better-auth/plugins/two-factor";
 
 import { env } from "@/env";
+import { enqueueEmail } from "@/modules/jobs";
 
 import { db } from "../database";
 import * as schema from "../database/schema";
@@ -47,6 +48,20 @@ export const auth = betterAuth({
         input: true,
       },
     },
+    changeEmail: {
+      enabled: true,
+      // Sent to the *current* email address. The body names both addresses
+      // so the user knows what they're approving.
+      sendChangeEmailVerification: async ({ user, newEmail, url }) => {
+        await enqueueEmail({
+          kind: "change-email",
+          to: user.email,
+          name: user.name,
+          newEmail,
+          url,
+        });
+      },
+    },
   },
 
   emailAndPassword: {
@@ -54,6 +69,33 @@ export const auth = betterAuth({
     minPasswordLength: 8,
     maxPasswordLength: 128,
     revokeSessionsOnPasswordReset: true,
+    // Block sign-in until the user verifies the address they registered
+    // with. The verification email is enqueued by sendVerificationEmail
+    // below (auto-fired by better-auth on signup).
+    requireEmailVerification: true,
+    sendResetPassword: async ({ user, url }) => {
+      await enqueueEmail({
+        kind: "reset-password",
+        to: user.email,
+        name: user.name,
+        url,
+      });
+    },
+  },
+
+  emailVerification: {
+    // Better-auth invokes this whenever a verification email is needed:
+    // signup (when sendOnSignUp is true), explicit /api/auth/send-verification
+    // calls, and resends triggered by sign-in attempts on unverified accounts.
+    sendVerificationEmail: async ({ user, url }) => {
+      await enqueueEmail({
+        kind: "verification",
+        to: user.email,
+        name: user.name,
+        url,
+      });
+    },
+    sendOnSignUp: true,
   },
 
   session: {
