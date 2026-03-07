@@ -1,6 +1,7 @@
 import {
   boolean,
   index,
+  jsonb,
   pgTable,
   text,
   timestamp,
@@ -95,4 +96,40 @@ export const twoFactor = pgTable(
       .references(() => user.id, { onDelete: "cascade" }),
   },
   (t) => [uniqueIndex("two_factor_user_id_idx").on(t.userId)],
+);
+
+// Append-only audit trail. Intentionally NO foreign key on actor_id — when a
+// user is deleted, their audit history must persist (forensics, FERPA-style
+// retention). actor_id may be null for system actions or unauthenticated
+// events. Indices are designed around the realistic query shapes:
+//   - "show me what user X did"            → (actor_id, created_at)
+//   - "show me everything done to resource"→ (resource_type, resource_id, created_at)
+//   - "show me every login this week"      → (action, created_at)
+//   - "show the latest N events globally"  → (created_at)
+// Equality columns lead the composite; range column (created_at) trails.
+export const auditLog = pgTable(
+  "audit_log",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    actorId: text("actor_id"),
+    action: text("action").notNull(),
+    resourceType: text("resource_type").notNull(),
+    resourceId: text("resource_id").notNull(),
+    ip: text("ip"),
+    userAgent: text("user_agent"),
+    metadata: jsonb("metadata"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("audit_log_actor_idx").on(t.actorId, t.createdAt),
+    index("audit_log_resource_idx").on(
+      t.resourceType,
+      t.resourceId,
+      t.createdAt,
+    ),
+    index("audit_log_action_idx").on(t.action, t.createdAt),
+    index("audit_log_created_at_idx").on(t.createdAt),
+  ],
 );

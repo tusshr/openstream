@@ -1,13 +1,12 @@
-import { Config, defineConfig } from "drizzle-kit";
+import { type Config, defineConfig } from "drizzle-kit";
 
 export default defineConfig({
   dialect: "postgresql",
   schema: "./src/database/schema.ts",
-  out: "./src/database",
+  out: "./drizzle",
   dbCredentials: {
     url: process.env.DATABASE_URL!,
   },
-  extensionsFilters: ["postgis"],
   verbose: true,
   strict: process.env.NODE_ENV === "production",
 }) satisfies Config;
