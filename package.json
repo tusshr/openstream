@@ -39,11 +39,13 @@
     "drizzle-orm": "^0.45.1",
     "drizzle-typebox": "^0.3.3",
     "elysia": "latest",
+    "nodemailer": "^8.0.7",
     "pino": "^10.3.1"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@trivago/prettier-plugin-sort-imports": "^6.0.2",
+    "@types/nodemailer": "^8.0.0",
     "@typescript-eslint/eslint-plugin": "^8.56.1",
     "@typescript-eslint/parser": "^8.56.1",
     "bun-types": "latest",

@@ -16,6 +16,18 @@ const EnvSchema = Type.Object({
   S3_BUCKET: Type.String({ minLength: 1 }),
   S3_REGION: Type.Optional(Type.String({ minLength: 1 })),
   S3_ENDPOINT: Type.Optional(Type.String({ minLength: 1 })),
+
+  // SMTP — all optional. When SMTP_HOST is absent the email worker logs the
+  // would-be message instead of sending. That keeps local dev usable without
+  // an SMTP relay, and tests hermetic. Production must set them.
+  SMTP_HOST: Type.Optional(Type.String({ minLength: 1 })),
+  SMTP_PORT: Type.Optional(Type.String({ pattern: "^[0-9]{1,5}$" })),
+  SMTP_USER: Type.Optional(Type.String({ minLength: 1 })),
+  SMTP_PASS: Type.Optional(Type.String({ minLength: 1 })),
+  SMTP_FROM: Type.Optional(Type.String({ minLength: 1 })),
+  SMTP_SECURE: Type.Optional(
+    Type.Union([Type.Literal("true"), Type.Literal("false")]),
+  ),
 });
 
 const raw = Object.fromEntries(
@@ -30,6 +42,12 @@ const raw = Object.fromEntries(
     S3_BUCKET: process.env.S3_BUCKET,
     S3_REGION: process.env.S3_REGION,
     S3_ENDPOINT: process.env.S3_ENDPOINT,
+    SMTP_HOST: process.env.SMTP_HOST,
+    SMTP_PORT: process.env.SMTP_PORT,
+    SMTP_USER: process.env.SMTP_USER,
+    SMTP_PASS: process.env.SMTP_PASS,
+    SMTP_FROM: process.env.SMTP_FROM,
+    SMTP_SECURE: process.env.SMTP_SECURE,
   }).map(([k, v]) => [k, v === "" ? undefined : v]),
 );
 
