@@ -4,6 +4,7 @@ import { admin } from "better-auth/plugins/admin";
 import { twoFactor } from "better-auth/plugins/two-factor";
 
 import { env } from "@/env";
+import { audit } from "@/lib/audit";
 import { enqueueEmail } from "@/modules/jobs";
 
 import { db } from "../database";
@@ -119,6 +120,43 @@ export const auth = betterAuth({
     useSecureCookies: env.NODE_ENV === "production",
     database: {
       generateId: () => crypto.randomUUID(),
+    },
+  },
+
+  // Audit hooks. These fire when better-auth writes to the underlying tables,
+  // which is the most reliable signal that the operation actually happened
+  // (vs hooking endpoint paths, which would fire for failed attempts too).
+  //
+  // Wired today: sign-up (user.create) and sign-in (session.create). Sign-out,
+  // password-reset success, 2FA toggle, and role changes don't have a clean
+  // databaseHook surface in current better-auth; they'll need endpoint hooks
+  // in a follow-up.
+  databaseHooks: {
+    user: {
+      create: {
+        after: async (newUser) => {
+          await audit({
+            actorId: newUser.id,
+            action: "user.sign-up",
+            resourceType: "user",
+            resourceId: newUser.id,
+          });
+        },
+      },
+    },
+    session: {
+      create: {
+        after: async (newSession) => {
+          await audit({
+            actorId: newSession.userId,
+            action: "user.sign-in",
+            resourceType: "session",
+            resourceId: newSession.id,
+            ip: newSession.ipAddress ?? null,
+            userAgent: newSession.userAgent ?? null,
+          });
+        },
+      },
     },
   },
 

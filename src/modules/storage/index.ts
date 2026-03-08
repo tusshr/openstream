@@ -1,5 +1,6 @@
 import { Elysia, status } from "elysia";
 
+import { audit } from "@/lib/audit";
 import { dataOf, ok } from "@/lib/response";
 import { authMacro } from "@/modules/auth";
 
@@ -98,7 +99,7 @@ export const storage = new Elysia({ prefix: "/storage", name: "storage" })
   )
   .delete(
     "/files",
-    async ({ query, user }) => {
+    async ({ query, user, request }) => {
       const result = await storageService.deleteFile(
         query.key,
         toActingUser(user),
@@ -110,6 +111,18 @@ export const storage = new Elysia({ prefix: "/storage", name: "storage" })
         };
         return status(403, failure);
       }
+
+      // Successful delete is a state-changing event on a tenant resource.
+      // We audit AFTER the S3 delete returns ok so the row only exists
+      // when the actual object has been removed.
+      await audit({
+        request,
+        actorId: user.id,
+        action: "storage.file.delete",
+        resourceType: "storage.object",
+        resourceId: query.key,
+      });
+
       return ok(result.data);
     },
     {
