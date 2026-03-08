@@ -82,6 +82,18 @@ export const auth = betterAuth({
         url,
       });
     },
+    // Fires after the password has actually been changed via the reset
+    // token. Better suited than a `databaseHooks.account.update` filter
+    // because account.update also covers token refreshes and email links.
+    onPasswordReset: async ({ user }, request) => {
+      await audit({
+        ...(request ? { request } : {}),
+        actorId: user.id,
+        action: "user.password-reset",
+        resourceType: "user",
+        resourceId: user.id,
+      });
+    },
   },
 
   emailVerification: {
@@ -127,10 +139,14 @@ export const auth = betterAuth({
   // which is the most reliable signal that the operation actually happened
   // (vs hooking endpoint paths, which would fire for failed attempts too).
   //
-  // Wired today: sign-up (user.create) and sign-in (session.create). Sign-out,
-  // password-reset success, 2FA toggle, and role changes don't have a clean
-  // databaseHook surface in current better-auth; they'll need endpoint hooks
-  // in a follow-up.
+  // Wired:
+  //   - sign-up        (user.create.after)
+  //   - sign-in        (session.create.after)
+  //   - sign-out       (session.delete.after, filtered by /sign-out path)
+  //   - password reset (emailAndPassword.onPasswordReset above)
+  //
+  // 2FA toggle and role changes go through plugin endpoints with no clean
+  // databaseHook surface; they'll need endpoint hooks in a follow-up.
   databaseHooks: {
     user: {
       create: {
@@ -154,6 +170,23 @@ export const auth = betterAuth({
             resourceId: newSession.id,
             ip: newSession.ipAddress ?? null,
             userAgent: newSession.userAgent ?? null,
+          });
+        },
+      },
+      // session.delete fires from many places: explicit sign-out, admin
+      // revoke, and the cascade triggered by revokeSessionsOnPasswordReset.
+      // We only want to audit the user-initiated case, so we filter by the
+      // endpoint path. Other deletes get their own audit entries from their
+      // own hooks (password-reset above, admin actions later).
+      delete: {
+        after: async (oldSession, context) => {
+          if (context?.path !== "/sign-out") return;
+          await audit({
+            ...(context.request ? { request: context.request } : {}),
+            actorId: oldSession.userId,
+            action: "user.sign-out",
+            resourceType: "session",
+            resourceId: oldSession.id,
           });
         },
       },
