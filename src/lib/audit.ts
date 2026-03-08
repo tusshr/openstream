@@ -42,6 +42,50 @@ export function extractUserAgent(request: Request): string | null {
   return request.headers.get("user-agent");
 }
 
+// Builders for the audit-emitting auth hooks. They live here, not in
+// `src/lib/auth.ts`, so the path-filter on session.delete is unit-testable
+// without standing up better-auth + the DB.
+
+// better-auth's session.delete fires from many places: an explicit sign-out
+// POST, admin revoke, and the cascade triggered by
+// `revokeSessionsOnPasswordReset: true`. We only want to audit user-initiated
+// sign-outs; everything else gets its own audit entry from its own hook.
+// `null` means "do not audit this delete".
+export function buildSignOutAuditParams(
+  session: { readonly id: string; readonly userId: string },
+  context:
+    | {
+        readonly path?: string | undefined;
+        readonly request?: Request | undefined;
+      }
+    | null
+    | undefined,
+): AuditParams | null {
+  if (context?.path !== "/sign-out") return null;
+  return {
+    ...(context.request ? { request: context.request } : {}),
+    actorId: session.userId,
+    action: "user.sign-out",
+    resourceType: "session",
+    resourceId: session.id,
+  };
+}
+
+// Pairs with `emailAndPassword.onPasswordReset`. The hook only fires on a
+// successful reset, so no filtering is needed here.
+export function buildPasswordResetAuditParams(
+  user: { readonly id: string },
+  request: Request | undefined,
+): AuditParams {
+  return {
+    ...(request ? { request } : {}),
+    actorId: user.id,
+    action: "user.password-reset",
+    resourceType: "user",
+    resourceId: user.id,
+  };
+}
+
 // Pure builder. Tests cover this; the db.insert path is a thin wrapper.
 export function buildAuditRow(params: AuditParams): AuditRow {
   const ip =

@@ -4,7 +4,11 @@ import { admin } from "better-auth/plugins/admin";
 import { twoFactor } from "better-auth/plugins/two-factor";
 
 import { env } from "@/env";
-import { audit } from "@/lib/audit";
+import {
+  audit,
+  buildPasswordResetAuditParams,
+  buildSignOutAuditParams,
+} from "@/lib/audit";
 import { enqueueEmail } from "@/modules/jobs";
 
 import { db } from "../database";
@@ -86,13 +90,7 @@ export const auth = betterAuth({
     // token. Better suited than a `databaseHooks.account.update` filter
     // because account.update also covers token refreshes and email links.
     onPasswordReset: async ({ user }, request) => {
-      await audit({
-        ...(request ? { request } : {}),
-        actorId: user.id,
-        action: "user.password-reset",
-        resourceType: "user",
-        resourceId: user.id,
-      });
+      await audit(buildPasswordResetAuditParams(user, request));
     },
   },
 
@@ -180,14 +178,8 @@ export const auth = betterAuth({
       // own hooks (password-reset above, admin actions later).
       delete: {
         after: async (oldSession, context) => {
-          if (context?.path !== "/sign-out") return;
-          await audit({
-            ...(context.request ? { request: context.request } : {}),
-            actorId: oldSession.userId,
-            action: "user.sign-out",
-            resourceType: "session",
-            resourceId: oldSession.id,
-          });
+          const params = buildSignOutAuditParams(oldSession, context);
+          if (params) await audit(params);
         },
       },
     },
