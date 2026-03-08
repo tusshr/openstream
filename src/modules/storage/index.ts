@@ -3,6 +3,7 @@ import { Elysia, status } from "elysia";
 import { audit } from "@/lib/audit";
 import { dataOf, ok } from "@/lib/response";
 import { authMacro } from "@/modules/auth";
+import { rateLimit, tooManyRequestsResponseSchema } from "@/plugins/rate-limit";
 
 import {
   deleteResponseSchema,
@@ -34,6 +35,7 @@ export const storage = new Elysia({ prefix: "/storage", name: "storage" })
     "storage.delete.response": dataOf(deleteResponseSchema),
     "storage.forbidden.response": forbiddenResponseSchema,
     "storage.unsupported.response": unsupportedMediaTypeResponseSchema,
+    "rate-limit.response": tooManyRequestsResponseSchema,
   })
   .post(
     "/presign/upload",
@@ -51,10 +53,16 @@ export const storage = new Elysia({ prefix: "/storage", name: "storage" })
     },
     {
       auth: true,
+      beforeHandle: rateLimit({
+        key: "storage.presign.upload",
+        max: 30,
+        windowSec: 60,
+      }),
       body: "storage.upload.body",
       response: {
         200: "storage.presigned.response",
         415: "storage.unsupported.response",
+        429: "rate-limit.response",
       },
       detail: {
         summary: "Create presigned upload URL",
@@ -83,10 +91,16 @@ export const storage = new Elysia({ prefix: "/storage", name: "storage" })
     },
     {
       auth: true,
+      beforeHandle: rateLimit({
+        key: "storage.presign.download",
+        max: 120,
+        windowSec: 60,
+      }),
       query: "storage.key.query",
       response: {
         200: "storage.presigned.response",
         403: "storage.forbidden.response",
+        429: "rate-limit.response",
       },
       detail: {
         summary: "Create presigned download URL",
