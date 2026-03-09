@@ -36,9 +36,11 @@ export type RateLimitContext = {
 // schema so rate-limited routes can declare it in their `response` map and
 // satisfy Elysia's static response-shape checks.
 export const tooManyRequestsResponseSchema = t.Object({
-  error: t.Literal("Too Many Requests"),
-  message: t.String(),
-  retryAfterSeconds: t.Integer({ minimum: 0 }),
+  error: t.Object({
+    code: t.Literal("TOO_MANY_REQUESTS"),
+    message: t.String(),
+    retryAfterSeconds: t.Integer({ minimum: 0 }),
+  }),
 });
 
 export type TooManyRequestsResponse =
@@ -76,9 +78,11 @@ export function rateLimit(options: RateLimitOptions) {
     if (count > options.max) {
       const retryAfter = Math.max(ttl, 0);
       const body: TooManyRequestsResponse = {
-        error: "Too Many Requests",
-        message: `Rate limit exceeded for '${options.key}'. Retry after ${retryAfter}s.`,
-        retryAfterSeconds: retryAfter,
+        error: {
+          code: "TOO_MANY_REQUESTS",
+          message: `Rate limit exceeded for '${options.key}'. Retry after ${retryAfter}s.`,
+          retryAfterSeconds: retryAfter,
+        },
       };
       ctx.set.headers["Retry-After"] = String(retryAfter);
       return status(429, body);
