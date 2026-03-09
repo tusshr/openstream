@@ -59,24 +59,21 @@ function normalizeValidationError(
 
 function buildValidationResponse(error: ValidationErrorShape): Response {
   const normalized = normalizeValidationError(error);
+
+  const details = normalized.errors?.map((issue) => ({
+    ...(issue.path ? { field: issue.path } : {}),
+    message: issue.message ?? issue.summary ?? "Validation error",
+  }));
+
   return Response.json(
     {
-      error: "Validation failed",
-      message:
-        normalized.message ??
-        "Request validation failed. Please check your input.",
-      ...(normalized.on ? { on: normalized.on } : {}),
-      ...(normalized.property ? { property: normalized.property } : {}),
-      ...(normalized.summary ? { summary: normalized.summary } : {}),
-      ...(Array.isArray(normalized.errors)
-        ? {
-            issues: normalized.errors.map((issue) => ({
-              ...(issue.path ? { path: issue.path } : {}),
-              ...(issue.message ? { message: issue.message } : {}),
-              ...(issue.summary ? { summary: issue.summary } : {}),
-            })),
-          }
-        : {}),
+      error: {
+        code: "VALIDATION_ERROR",
+        message:
+          normalized.message ??
+          "Request validation failed. Please check your input.",
+        ...(details?.length ? { details } : {}),
+      },
     },
     { status: 422 },
   );
@@ -96,17 +93,28 @@ export const app = new Elysia()
   .onError(({ code, error }) => {
     switch (code) {
       case "NOT_FOUND":
-        return Response.json({ error: "Not found" }, { status: 404 });
+        return Response.json(
+          { error: { code: "NOT_FOUND", message: "Not found" } },
+          { status: 404 },
+        );
       case "VALIDATION":
         return buildValidationResponse(error as ValidationErrorShape);
       case "PARSE":
         return Response.json(
-          { error: "Invalid request body" },
+          { error: { code: "PARSE_ERROR", message: "Invalid request body" } },
           { status: 400 },
         );
     }
 
-    return Response.json({ error: "Internal server error" }, { status: 500 });
+    return Response.json(
+      {
+        error: {
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Internal server error",
+        },
+      },
+      { status: 500 },
+    );
   })
   .use(securityHeaders)
   .use(cors)
