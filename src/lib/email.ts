@@ -30,8 +30,6 @@ function getTransport(): Transporter {
   }
 
   const port = env.SMTP_PORT ? Number(env.SMTP_PORT) : 587;
-  // STARTTLS on 587 (the default), implicit TLS on 465. Allow override via
-  // SMTP_SECURE for self-hosted relays that don't follow the convention.
   const secure =
     env.SMTP_SECURE !== undefined ? env.SMTP_SECURE === "true" : port === 465;
 
@@ -50,10 +48,6 @@ function getTransport(): Transporter {
   return cachedTransport;
 }
 
-// Send an email. When SMTP is unconfigured (dev / test), the message is
-// logged at info-level and returns `{ kind: "dry-run" }` instead of erroring.
-// This lets developers exercise the auth flow without running an SMTP relay,
-// and lets tests assert on the message body without networking.
 export async function sendEmail(
   message: EmailMessage,
 ): Promise<EmailSendResult> {
@@ -87,7 +81,6 @@ export async function sendEmail(
   return { kind: "sent", messageId: info.messageId };
 }
 
-// Exposed for tests that need to reset state between cases.
 export function __resetEmailTransport(): void {
   cachedTransport = null;
 }

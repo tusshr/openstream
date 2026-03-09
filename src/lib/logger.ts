@@ -6,8 +6,6 @@ const LEVELS = ["fatal", "error", "warn", "info", "debug", "trace"] as const;
 type Level = (typeof LEVELS)[number];
 
 function resolveLevel(): Level | "silent" {
-  // Tests don't care about log output and we don't want pino JSON polluting
-  // assertion output. Override with LOG_LEVEL=info if you need to debug.
   const fromEnv = process.env.LOG_LEVEL?.toLowerCase();
   if (fromEnv && (LEVELS as readonly string[]).includes(fromEnv)) {
     return fromEnv as Level;
@@ -21,7 +19,6 @@ function resolveLevel(): Level | "silent" {
 
 const baseOptions: LoggerOptions = {
   level: resolveLevel(),
-  // Redact common credential-bearing fields. Pino redacts deeply.
   redact: {
     paths: [
       "password",
@@ -42,17 +39,11 @@ const baseOptions: LoggerOptions = {
     ],
     censor: "[REDACTED]",
   },
-  // ISO timestamp (default is epoch ms). Easier to read in raw stdout.
   timestamp: pino.stdTimeFunctions.isoTime,
   base: {
-    // `SERVICE_NAME` is set per entry point via the npm script (api vs
-    // worker). Defaults to api so a plain `bun src/index.ts` stays sensible.
     service: process.env.SERVICE_NAME ?? "openstream-api",
     env: env.NODE_ENV,
   },
-  // No in-process transport. Sync stdout is what containerized log
-  // aggregators (Coolify, Docker, k8s) expect. Pipe through `pino-pretty`
-  // externally in dev — see the `dev` script.
 };
 
 export const logger: Logger = pino(baseOptions);
