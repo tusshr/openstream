@@ -1,15 +1,4 @@
-export interface ApiMeta {
-  requestId: string;
-  timestamp: string;
-  apiVersion: string;
-}
-
-export type ApiLinks = {
-  self: string;
-  [key: string]: string;
-};
-
-export interface Pagination {
+export interface PaginationMeta {
   hasMore: boolean;
   nextCursor: string | null;
   previousCursor: string | null;
@@ -17,7 +6,13 @@ export interface Pagination {
   totalCount?: number;
 }
 
-export interface ErrorDetail {
+export interface PaginationLinks {
+  self: string;
+  next?: string;
+  prev?: string;
+}
+
+export interface FieldError {
   field?: string;
   rule?: string;
   message: string;
@@ -27,33 +22,15 @@ export interface ErrorDetail {
 export interface ApiError {
   code: string;
   message: string;
-  details: ErrorDetail[];
-  helpUrl?: string;
+  details?: FieldError[];
 }
 
-export interface ApiSuccessResponse<T> {
-  status: "success";
+export interface ApiResponse<T> {
   data: T;
-  meta: ApiMeta;
-  links?: ApiLinks;
-}
-
-export interface ApiCollectionResponse<T> {
-  status: "success";
-  data: T[];
-  pagination: Pagination;
-  links: ApiLinks;
-  meta: ApiMeta;
+  meta?: PaginationMeta;
+  links?: PaginationLinks;
 }
 
 export interface ApiErrorResponse {
-  status: "error";
   error: ApiError;
-  meta: ApiMeta;
-}
-
-export interface ApiAcceptedResponse<T> {
-  status: "accepted";
-  data: T;
-  meta: ApiMeta;
 }

@@ -1,70 +1,52 @@
 import { t, type TSchema } from "elysia";
 
-export const apiMetaSchema = t.Object(
+export const PaginationMetaSchema = t.Object(
   {
-    requestId: t.String({ minLength: 1 }),
-    timestamp: t.String({ format: "date-time" }),
-    apiVersion: t.String({ minLength: 1 }),
+    hasMore: t.Boolean(),
+    nextCursor: t.Union([t.String({ minLength: 1 }), t.Null()]),
+    previousCursor: t.Union([t.String({ minLength: 1 }), t.Null()]),
+    limit: t.Number({ minimum: 1 }),
+    totalCount: t.Optional(t.Number({ minimum: 0 })),
   },
-  { description: "Response metadata" },
+  { description: "Pagination metadata" },
 );
 
-export const apiLinksSchema = t.Record(
-  t.String({ minLength: 1 }),
-  t.String({ format: "uri" }),
+export const PaginationLinksSchema = t.Object(
   {
-    description: "Related links (must include self when present)",
+    self: t.String({ format: "uri" }),
+    next: t.Optional(t.String({ format: "uri" })),
+    prev: t.Optional(t.String({ format: "uri" })),
   },
+  { description: "Pagination navigation links" },
 );
 
-export const errorDetailSchema = t.Object({
+export const FieldErrorSchema = t.Object({
   field: t.Optional(t.String({ minLength: 1 })),
   rule: t.Optional(t.String({ minLength: 1 })),
   message: t.String({ minLength: 1 }),
   rejectedValue: t.Optional(t.Unknown()),
 });
 
-export const apiErrorSchema = t.Object({
+export const ApiErrorSchema = t.Object({
   code: t.String({ minLength: 1 }),
   message: t.String({ minLength: 1 }),
-  details: t.Array(errorDetailSchema),
-  helpUrl: t.Optional(t.String({ format: "uri" })),
+  details: t.Optional(t.Array(FieldErrorSchema)),
 });
 
-export const paginationSchema = t.Object({
-  hasMore: t.Boolean(),
-  nextCursor: t.Union([t.String({ minLength: 1 }), t.Null()]),
-  previousCursor: t.Union([t.String({ minLength: 1 }), t.Null()]),
-  limit: t.Number({ minimum: 1 }),
-  totalCount: t.Optional(t.Number({ minimum: 0 })),
+export const ApiErrorResponseSchema = t.Object({
+  error: ApiErrorSchema,
 });
 
-export const successOf = <T extends TSchema>(dataSchema: T) =>
+export const responseOf = <T extends TSchema>(dataSchema: T) =>
   t.Object({
-    status: t.Literal("success"),
     data: dataSchema,
-    meta: apiMetaSchema,
-    links: t.Optional(apiLinksSchema),
+    meta: t.Optional(PaginationMetaSchema),
+    links: t.Optional(PaginationLinksSchema),
   });
 
 export const collectionOf = <T extends TSchema>(itemSchema: T) =>
   t.Object({
-    status: t.Literal("success"),
     data: t.Array(itemSchema),
-    pagination: paginationSchema,
-    links: apiLinksSchema,
-    meta: apiMetaSchema,
+    meta: PaginationMetaSchema,
+    links: t.Optional(PaginationLinksSchema),
   });
-
-export const acceptedOf = <T extends TSchema>(dataSchema: T) =>
-  t.Object({
-    status: t.Literal("accepted"),
-    data: dataSchema,
-    meta: apiMetaSchema,
-  });
-
-export const apiErrorResponseSchema = t.Object({
-  status: t.Literal("error"),
-  error: apiErrorSchema,
-  meta: apiMetaSchema,
-});
