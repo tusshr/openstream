@@ -3,6 +3,8 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { admin } from "better-auth/plugins/admin";
 import { twoFactor } from "better-auth/plugins/two-factor";
 
+import { db } from "@/db";
+import * as schema from "@/db/schema";
 import { env } from "@/env";
 import {
   audit,
@@ -11,8 +13,6 @@ import {
 } from "@/lib/audit";
 import { enqueueEmail } from "@/modules/jobs";
 
-import { db } from "../database";
-import * as schema from "../database/schema";
 import { redis } from "./redis";
 
 export const auth = betterAuth({

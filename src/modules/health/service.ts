@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
 
-import { db } from "@/database";
+import { db } from "@/db";
 import { logger } from "@/lib/logger";
 import { redis } from "@/lib/redis";
 
@@ -8,7 +8,7 @@ import type { CheckStatus, ReadinessResponse } from "./model";
 
 const DEPENDENCY_TIMEOUT_MS = 2_000;
 
-function withTimeout<T>(
+async function withTimeout<T>(
   promise: Promise<T>,
   timeoutMs: number,
   label: string,

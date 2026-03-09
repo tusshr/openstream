@@ -1,5 +1,5 @@
-import { db } from "@/database";
-import { auditLog } from "@/database/schema";
+import { db } from "@/db";
+import { auditLog } from "@/db/schema";
 import { logger } from "@/lib/logger";
 
 export type AuditParams = {
@@ -23,10 +23,6 @@ export type AuditRow = {
   readonly metadata: Record<string, unknown> | null;
 };
 
-// First non-empty X-Forwarded-For value, then X-Real-IP. Real client IP from
-// a Bun-served Request isn't directly readable, so we trust headers set by
-// the reverse proxy / PaaS. The deploy must therefore strip / canonicalize
-// X-Forwarded-For at the edge so a malicious client can't spoof.
 export function extractIp(request: Request): string | null {
   const xff = request.headers.get("x-forwarded-for");
   if (xff) {
