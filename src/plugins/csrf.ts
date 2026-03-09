@@ -44,8 +44,10 @@ export const csrf = new Elysia({ name: "csrf" }).onBeforeHandle(
     const received = request.headers.get(CSRF_HEADER);
     if (received !== CSRF_HEADER_VALUE) {
       return status(403, {
-        error: "Forbidden",
-        message: `Missing or invalid '${CSRF_HEADER}' header.`,
+        error: {
+          code: "FORBIDDEN",
+          message: `Missing or invalid '${CSRF_HEADER}' header.`,
+        },
       });
     }
   },
