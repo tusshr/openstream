@@ -43,9 +43,11 @@ describe("rateLimit", () => {
     expect(result).toBeDefined();
     expect(result?.code).toBe(429);
     expect(result?.response).toEqual({
-      error: "Too Many Requests",
-      message: expect.stringContaining("Rate limit exceeded for 't'"),
-      retryAfterSeconds: expect.any(Number),
+      error: {
+        code: "TOO_MANY_REQUESTS",
+        message: expect.stringContaining("Rate limit exceeded for 't'"),
+        retryAfterSeconds: expect.any(Number),
+      },
     });
     expect(ctx.set.headers["Retry-After"]).toBeDefined();
   });

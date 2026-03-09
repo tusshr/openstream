@@ -8,7 +8,7 @@ import { callApp } from "./helpers/request";
 
 describe("CSRF guard", () => {
   test("rejects POST to /api/storage/presign/upload without the CSRF header", async () => {
-    const res = await callApp<{ error: string; message: string }>(
+    const res = await callApp<{ error: { code: string; message: string } }>(
       "/api/storage/presign/upload",
       {
         method: "POST",
@@ -21,8 +21,8 @@ describe("CSRF guard", () => {
       },
     );
     expect(res.status).toBe(403);
-    expect(res.body.error).toBe("Forbidden");
-    expect(res.body.message).toMatch(/x-requested-with/i);
+    expect(res.body.error.code).toBe("FORBIDDEN");
+    expect(res.body.error.message).toMatch(/x-requested-with/i);
   });
 
   test("rejects DELETE to /api/storage/files without the CSRF header", async () => {
@@ -31,12 +31,12 @@ describe("CSRF guard", () => {
     // onBeforeHandle, so an invalid key would 422 first.)
     const validKey =
       "users/anon/profile-image/00000000-0000-0000-0000-000000000000/file";
-    const res = await callApp<{ error: string }>(
+    const res = await callApp<{ error: { code: string; message: string } }>(
       `/api/storage/files?key=${encodeURIComponent(validKey)}`,
       { method: "DELETE" },
     );
     expect(res.status).toBe(403);
-    expect(res.body.error).toBe("Forbidden");
+    expect(res.body.error.code).toBe("FORBIDDEN");
   });
 
   test("accepts POST when the CSRF header is set (falls through to auth)", async () => {
