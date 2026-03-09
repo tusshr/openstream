@@ -6,14 +6,14 @@ import { authMacro } from "@/modules/auth";
 import { rateLimit, tooManyRequestsResponseSchema } from "@/plugins/rate-limit";
 
 import {
-  deleteResponseSchema,
+  DeleteResponseSchema,
   type ForbiddenResponse,
-  forbiddenResponseSchema,
-  keyQuerySchema,
-  presignedResponseSchema,
-  presignUploadBodySchema,
+  ForbiddenResponseSchema,
+  KeyQuerySchema,
+  PresignedResponseSchema,
+  PresignUploadBodySchema,
   type UnsupportedMediaTypeResponse,
-  unsupportedMediaTypeResponseSchema,
+  UnsupportedMediaTypeResponseSchema,
 } from "./model";
 import { type ActingUser, storageService } from "./service";
 
@@ -29,12 +29,12 @@ function toActingUser(user: AuthedUser): ActingUser {
 export const storage = new Elysia({ prefix: "/storage", name: "storage" })
   .use(authMacro)
   .model({
-    "storage.upload.body": presignUploadBodySchema,
-    "storage.key.query": keyQuerySchema,
-    "storage.presigned.response": dataOf(presignedResponseSchema),
-    "storage.delete.response": dataOf(deleteResponseSchema),
-    "storage.forbidden.response": forbiddenResponseSchema,
-    "storage.unsupported.response": unsupportedMediaTypeResponseSchema,
+    "storage.upload.body": PresignUploadBodySchema,
+    "storage.key.query": KeyQuerySchema,
+    "storage.presigned.response": dataOf(PresignedResponseSchema),
+    "storage.delete.response": dataOf(DeleteResponseSchema),
+    "storage.forbidden.response": ForbiddenResponseSchema,
+    "storage.unsupported.response": UnsupportedMediaTypeResponseSchema,
     "rate-limit.response": tooManyRequestsResponseSchema,
   })
   .post(
@@ -43,9 +43,18 @@ export const storage = new Elysia({ prefix: "/storage", name: "storage" })
       const result = storageService.presignUpload(body, toActingUser(user));
       if (result.kind === "unsupported-media-type") {
         const failure: UnsupportedMediaTypeResponse = {
-          error: "Unsupported Media Type",
-          message: `contentType '${result.contentType}' is not allowed for purpose '${result.purpose}'.`,
-          allowedMimes: [...result.allowedMimes],
+          error: {
+            code: "UNSUPPORTED_MEDIA_TYPE",
+            message: `contentType '${result.contentType}' is not allowed for purpose '${result.purpose}'.`,
+            details: [
+              {
+                field: "contentType",
+                rule: "allowedMimes",
+                message: `Allowed types: ${[...result.allowedMimes].join(", ")}`,
+                rejectedValue: result.contentType,
+              },
+            ],
+          },
         };
         return status(415, failure);
       }
@@ -82,8 +91,7 @@ export const storage = new Elysia({ prefix: "/storage", name: "storage" })
       );
       if (result.kind === "forbidden") {
         const failure: ForbiddenResponse = {
-          error: "Forbidden",
-          message: result.reason,
+          error: { code: "FORBIDDEN", message: result.reason },
         };
         return status(403, failure);
       }
@@ -120,8 +128,7 @@ export const storage = new Elysia({ prefix: "/storage", name: "storage" })
       );
       if (result.kind === "forbidden") {
         const failure: ForbiddenResponse = {
-          error: "Forbidden",
-          message: result.reason,
+          error: { code: "FORBIDDEN", message: result.reason },
         };
         return status(403, failure);
       }

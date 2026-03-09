@@ -1,11 +1,13 @@
 import { t, validationDetail } from "elysia";
 
+import { FieldErrorSchema } from "@/lib/api/models";
+
 export const PRESIGN_TTL_SECONDS = 300;
 
 export const UPLOAD_PURPOSES = ["profile-image", "document", "media"] as const;
 export type UploadPurpose = (typeof UPLOAD_PURPOSES)[number];
 
-const purposeSchema = t.Union(
+const PurposeSchema = t.Union(
   UPLOAD_PURPOSES.map((value) => t.Literal(value)),
   {
     description:
@@ -16,7 +18,7 @@ const purposeSchema = t.Union(
   },
 );
 
-const fileNameSchema = t.String({
+const FileNameSchema = t.String({
   minLength: 1,
   maxLength: 255,
   description: "Original upload filename. Used only to derive a display slug.",
@@ -25,7 +27,7 @@ const fileNameSchema = t.String({
   ),
 });
 
-const contentTypeSchema = t.String({
+const ContentTypeSchema = t.String({
   minLength: 1,
   maxLength: 127,
   description: "MIME type. Must match the purpose's allowlist.",
@@ -34,7 +36,7 @@ const contentTypeSchema = t.String({
   ),
 });
 
-const storageKeySchema = t.String({
+const StorageKeySchema = t.String({
   minLength: 1,
   maxLength: 1024,
   pattern: "^users/[^/]+/[^/]+/[^/]+/[^/]+$",
@@ -45,11 +47,11 @@ const storageKeySchema = t.String({
   ),
 });
 
-export const presignUploadBodySchema = t.Object(
+export const PresignUploadBodySchema = t.Object(
   {
-    fileName: fileNameSchema,
-    contentType: contentTypeSchema,
-    purpose: purposeSchema,
+    fileName: FileNameSchema,
+    contentType: ContentTypeSchema,
+    purpose: PurposeSchema,
   },
   {
     description: "Request a presigned upload URL.",
@@ -59,14 +61,14 @@ export const presignUploadBodySchema = t.Object(
   },
 );
 
-export const keyQuerySchema = t.Object(
-  { key: storageKeySchema },
+export const KeyQuerySchema = t.Object(
+  { key: StorageKeySchema },
   {
     error: validationDetail("Query is invalid. Provide a valid 'key'."),
   },
 );
 
-export const presignedResponseSchema = t.Object(
+export const PresignedResponseSchema = t.Object(
   {
     url: t.String({ format: "uri" }),
     key: t.String({ minLength: 1 }),
@@ -79,26 +81,30 @@ export const presignedResponseSchema = t.Object(
   },
 );
 
-export const deleteResponseSchema = t.Object({
+export const DeleteResponseSchema = t.Object({
   deleted: t.Literal(true),
   key: t.String({ minLength: 1 }),
 });
 
-export const forbiddenResponseSchema = t.Object({
-  error: t.Literal("Forbidden"),
-  message: t.String({ minLength: 1 }),
+export const ForbiddenResponseSchema = t.Object({
+  error: t.Object({
+    code: t.Literal("FORBIDDEN"),
+    message: t.String({ minLength: 1 }),
+  }),
 });
 
-export const unsupportedMediaTypeResponseSchema = t.Object({
-  error: t.Literal("Unsupported Media Type"),
-  message: t.String({ minLength: 1 }),
-  allowedMimes: t.Array(t.String({ minLength: 1 })),
+export const UnsupportedMediaTypeResponseSchema = t.Object({
+  error: t.Object({
+    code: t.Literal("UNSUPPORTED_MEDIA_TYPE"),
+    message: t.String({ minLength: 1 }),
+    details: t.Optional(t.Array(FieldErrorSchema)),
+  }),
 });
 
-export type PresignUploadBody = typeof presignUploadBodySchema.static;
-export type KeyQuery = typeof keyQuerySchema.static;
-export type PresignedResponse = typeof presignedResponseSchema.static;
-export type DeleteResponse = typeof deleteResponseSchema.static;
-export type ForbiddenResponse = typeof forbiddenResponseSchema.static;
+export type PresignUploadBody = typeof PresignUploadBodySchema.static;
+export type KeyQuery = typeof KeyQuerySchema.static;
+export type PresignedResponse = typeof PresignedResponseSchema.static;
+export type DeleteResponse = typeof DeleteResponseSchema.static;
+export type ForbiddenResponse = typeof ForbiddenResponseSchema.static;
 export type UnsupportedMediaTypeResponse =
-  typeof unsupportedMediaTypeResponseSchema.static;
+  typeof UnsupportedMediaTypeResponseSchema.static;
