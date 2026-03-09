@@ -1,10 +1,10 @@
 import { t } from "elysia";
 
-const checkStatusSchema = t.Union([t.Literal("ok"), t.Literal("down")], {
+const CheckStatusSchema = t.Union([t.Literal("ok"), t.Literal("down")], {
   description: "Result of a single dependency probe",
 });
 
-export const livenessResponseSchema = t.Object(
+export const LivenessResponseSchema = t.Object(
   {
     status: t.Literal("ok"),
     uptime: t.Number({ minimum: 0, description: "Process uptime in seconds" }),
@@ -13,13 +13,13 @@ export const livenessResponseSchema = t.Object(
   { description: "Process is responsive. No dependencies are checked." },
 );
 
-export const readinessResponseSchema = t.Object(
+export const ReadinessResponseSchema = t.Object(
   {
     status: t.Union([t.Literal("ok"), t.Literal("degraded")]),
     timestamp: t.String({ format: "date-time" }),
     checks: t.Object({
-      database: checkStatusSchema,
-      redis: checkStatusSchema,
+      database: CheckStatusSchema,
+      redis: CheckStatusSchema,
     }),
   },
   {
@@ -28,6 +28,6 @@ export const readinessResponseSchema = t.Object(
   },
 );
 
-export type LivenessResponse = typeof livenessResponseSchema.static;
-export type ReadinessResponse = typeof readinessResponseSchema.static;
-export type CheckStatus = typeof checkStatusSchema.static;
+export type LivenessResponse = typeof LivenessResponseSchema.static;
+export type ReadinessResponse = typeof ReadinessResponseSchema.static;
+export type CheckStatus = typeof CheckStatusSchema.static;

@@ -1,6 +1,6 @@
 import { Elysia } from "elysia";
 
-import { livenessResponseSchema, readinessResponseSchema } from "./model";
+import { LivenessResponseSchema, ReadinessResponseSchema } from "./model";
 import { healthService } from "./service";
 
 function buildLivenessResponse() {
@@ -13,8 +13,8 @@ function buildLivenessResponse() {
 
 export const health = new Elysia({ name: "health" })
   .model({
-    "health.liveness.response": livenessResponseSchema,
-    "health.readiness.response": readinessResponseSchema,
+    "health.liveness.response": LivenessResponseSchema,
+    "health.readiness.response": ReadinessResponseSchema,
   })
   .get("/livez", () => buildLivenessResponse(), {
     response: { 200: "health.liveness.response" },
