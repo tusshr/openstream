@@ -53,9 +53,6 @@ export type ActingUser = {
   readonly role: string;
 };
 
-// Framework-agnostic tagged results. The controller maps each kind to an HTTP
-// status code; the service stays unit-testable without Elysia, and adding a
-// new failure mode is just another variant in the union.
 export type ServiceOk<T> = { readonly kind: "ok"; readonly data: T };
 
 export type PresignUploadResult =
@@ -75,9 +72,6 @@ export type DeleteFileResult =
   | ServiceOk<DeleteResponse>
   | { readonly kind: "forbidden"; readonly reason: string };
 
-// Allow letters, digits, dot, hyphen, underscore. Collapse other runs to a
-// single underscore. Strip leading dots/underscores so we never produce hidden
-// files or path-traversal segments. Cap at 100 chars to keep keys short.
 function slugifyFileName(fileName: string): string {
   const cleaned = fileName
     .normalize("NFKD")
@@ -101,9 +95,6 @@ function isAdmin(user: ActingUser): boolean {
   return user.role === "admin";
 }
 
-// Returns null if the key belongs to the user (or the user is admin), and a
-// short reason string otherwise. The route schema already validates the key
-// shape; this is defense-in-depth and the seam the unit tests exercise.
 function checkKeyOwnership(key: string, user: ActingUser): string | null {
   if (isAdmin(user)) return null;
 
@@ -140,7 +131,6 @@ export class StorageService {
     }
 
     const key = buildObjectKey(user.id, body.purpose, body.fileName);
-
     const url = s3.presign(key, {
       method: "PUT",
       expiresIn: PRESIGN_TTL_SECONDS,
@@ -189,7 +179,6 @@ export class StorageService {
 
 export const storageService = new StorageService();
 
-// Exported for unit testing. Not part of the runtime API.
 export const __testing = {
   slugifyFileName,
   buildObjectKey,

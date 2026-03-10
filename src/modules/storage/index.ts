@@ -17,9 +17,6 @@ import {
 } from "./model";
 import { type ActingUser, storageService } from "./service";
 
-// `role` on better-auth's user is `string | null | undefined`. The `?:` plus
-// `| undefined` is required under exactOptionalPropertyTypes — without the
-// explicit `| undefined`, the call site couldn't pass the property at all.
 type AuthedUser = { id: string; role?: string | null | undefined };
 
 function toActingUser(user: AuthedUser): ActingUser {
