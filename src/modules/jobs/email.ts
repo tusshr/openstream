@@ -10,9 +10,6 @@ import { logger } from "@/lib/logger";
 
 export const EMAIL_JOB_NAME = "email" as const;
 
-// Discriminated by `kind`. Each variant gets its own body builder below, so
-// the worker switch stays exhaustive and adding a new email type is a
-// localized change (new schema + new builder + new switch arm).
 const verificationPayloadSchema = Type.Object({
   kind: Type.Literal("verification"),
   to: Type.String({ format: "email" }),
@@ -46,8 +43,6 @@ export type VerificationPayload = Static<typeof verificationPayloadSchema>;
 export type ResetPasswordPayload = Static<typeof resetPasswordPayloadSchema>;
 export type ChangeEmailPayload = Static<typeof changeEmailPayloadSchema>;
 
-// Plain-text bodies for now. HTML/templating lands when there's a real UI to
-// match the brand. Keep these focused: one CTA per email, no marketing.
 const APP_NAME = "OpenStream";
 
 export function buildVerificationEmail(
@@ -92,8 +87,7 @@ export function buildChangeEmailEmail(
   payload: ChangeEmailPayload,
 ): EmailMessage {
   return {
-    // Per better-auth convention, the verification link is sent to the
-    // *current* email address, not the new one. The body mentions both so
+    // Sent to the current address per better-auth convention; mentions both so
     // the user knows what they're approving.
     to: payload.to,
     subject: `Confirm your new email — ${APP_NAME}`,
@@ -122,8 +116,8 @@ function buildMessage(payload: EmailPayload): EmailMessage {
   }
 }
 
-// Queue payloads are JSON; re-validate on the consumer side because an older
-// producer could have enqueued a payload with a different shape.
+// Re-validate on the consumer side — an older producer could have enqueued a
+// payload with a different shape.
 export function parseEmailPayload(raw: unknown): EmailPayload {
   if (!Value.Check(emailPayloadSchema, raw)) {
     const errors = [...Value.Errors(emailPayloadSchema, raw)]
