@@ -18,12 +18,8 @@ import { redis } from "./redis";
 export const auth = betterAuth({
   appName: "Openstream",
 
-  database: drizzleAdapter(db, {
-    provider: "pg",
-    schema,
-  }),
+  database: drizzleAdapter(db, { provider: "pg", schema }),
 
-  // Redis as secondary storage: sessions + rate limits never hit the primary DB
   secondaryStorage: {
     get: (key) => redis.get(key),
     set: async (key, value, ttl) => {
@@ -55,8 +51,6 @@ export const auth = betterAuth({
     },
     changeEmail: {
       enabled: true,
-      // Sent to the *current* email address. The body names both addresses
-      // so the user knows what they're approving.
       sendChangeEmailVerification: async ({ user, newEmail, url }) => {
         await enqueueEmail({
           kind: "change-email",
@@ -74,9 +68,6 @@ export const auth = betterAuth({
     minPasswordLength: 8,
     maxPasswordLength: 128,
     revokeSessionsOnPasswordReset: true,
-    // Block sign-in until the user verifies the address they registered
-    // with. The verification email is enqueued by sendVerificationEmail
-    // below (auto-fired by better-auth on signup).
     requireEmailVerification: true,
     sendResetPassword: async ({ user, url }) => {
       await enqueueEmail({
@@ -86,18 +77,12 @@ export const auth = betterAuth({
         url,
       });
     },
-    // Fires after the password has actually been changed via the reset
-    // token. Better suited than a `databaseHooks.account.update` filter
-    // because account.update also covers token refreshes and email links.
     onPasswordReset: async ({ user }, request) => {
       await audit(buildPasswordResetAuditParams(user, request));
     },
   },
 
   emailVerification: {
-    // Better-auth invokes this whenever a verification email is needed:
-    // signup (when sendOnSignUp is true), explicit /api/auth/send-verification
-    // calls, and resends triggered by sign-in attempts on unverified accounts.
     sendVerificationEmail: async ({ user, url }) => {
       await enqueueEmail({
         kind: "verification",
@@ -110,41 +95,27 @@ export const auth = betterAuth({
   },
 
   session: {
-    expiresIn: 60 * 60 * 24 * 7, // 7 days
-    updateAge: 60 * 60 * 24, // refresh session if older than 1 day
-    storeSessionInDatabase: true, // persist to DB alongside Redis
-    cookieCache: {
-      enabled: true,
-      maxAge: 60 * 5, // re-validate against Redis every 5 minutes
-    },
+    expiresIn: 60 * 60 * 24 * 7,
+    updateAge: 60 * 60 * 24,
+    storeSessionInDatabase: true,
+    cookieCache: { enabled: true, maxAge: 60 * 5 },
   },
 
   rateLimit: {
     enabled: true,
     window: 60,
     max: 10,
-    storage: "secondary-storage", // use Redis for rate limit counters
+    storage: "secondary-storage",
   },
 
   advanced: {
     useSecureCookies: env.NODE_ENV === "production",
-    database: {
-      generateId: () => crypto.randomUUID(),
-    },
+    database: { generateId: () => crypto.randomUUID() },
   },
 
-  // Audit hooks. These fire when better-auth writes to the underlying tables,
-  // which is the most reliable signal that the operation actually happened
-  // (vs hooking endpoint paths, which would fire for failed attempts too).
-  //
-  // Wired:
-  //   - sign-up        (user.create.after)
-  //   - sign-in        (session.create.after)
-  //   - sign-out       (session.delete.after, filtered by /sign-out path)
-  //   - password reset (emailAndPassword.onPasswordReset above)
-  //
-  // 2FA toggle and role changes go through plugin endpoints with no clean
-  // databaseHook surface; they'll need endpoint hooks in a follow-up.
+  // Audit hooks fire on DB writes — more reliable than endpoint hooks which
+  // also fire on failed attempts. Wired: sign-up, sign-in, sign-out,
+  // password-reset. 2FA toggle and role changes need follow-up endpoint hooks.
   databaseHooks: {
     user: {
       create: {
@@ -171,11 +142,6 @@ export const auth = betterAuth({
           });
         },
       },
-      // session.delete fires from many places: explicit sign-out, admin
-      // revoke, and the cascade triggered by revokeSessionsOnPasswordReset.
-      // We only want to audit the user-initiated case, so we filter by the
-      // endpoint path. Other deletes get their own audit entries from their
-      // own hooks (password-reset above, admin actions later).
       delete: {
         after: async (oldSession, context) => {
           const params = buildSignOutAuditParams(oldSession, context);
@@ -185,29 +151,20 @@ export const auth = betterAuth({
     },
   },
 
-  experimental: {
-    // 2-3x performance improvement for DB queries via joins
-    joins: true,
-  },
+  experimental: { joins: true },
 
   plugins: [
     twoFactor({
       issuer: "Openstream",
-      totpOptions: {
-        digits: 6,
-        period: 30,
-      },
+      totpOptions: { digits: 6, period: 30 },
       backupCodeOptions: {
         amount: 10,
         length: 10,
         storeBackupCodes: "encrypted",
       },
-      twoFactorCookieMaxAge: 600, // 10 min window to complete 2FA
-      trustDeviceMaxAge: 30 * 24 * 60 * 60, // trust device for 30 days
+      twoFactorCookieMaxAge: 600,
+      trustDeviceMaxAge: 30 * 24 * 60 * 60,
     }),
-    // Role management — exposes user.role on every session
-    // Default role: "user". Promote via auth.api.setRole() or admin routes.
-    // Prepares the foundation for CASL ability definitions.
     admin(),
   ],
 });
