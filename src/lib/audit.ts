@@ -29,24 +29,15 @@ export function extractIp(request: Request): string | null {
     const first = xff.split(",")[0]?.trim();
     if (first) return first;
   }
-  const real = request.headers.get("x-real-ip");
-  if (real) return real;
-  return null;
+  return request.headers.get("x-real-ip");
 }
 
 export function extractUserAgent(request: Request): string | null {
   return request.headers.get("user-agent");
 }
 
-// Builders for the audit-emitting auth hooks. They live here, not in
-// `src/lib/auth.ts`, so the path-filter on session.delete is unit-testable
-// without standing up better-auth + the DB.
-
-// better-auth's session.delete fires from many places: an explicit sign-out
-// POST, admin revoke, and the cascade triggered by
-// `revokeSessionsOnPasswordReset: true`. We only want to audit user-initiated
-// sign-outs; everything else gets its own audit entry from its own hook.
-// `null` means "do not audit this delete".
+// session.delete fires from many places (sign-out, admin revoke, password reset cascade).
+// We only audit user-initiated sign-outs; other deletes get their own entries.
 export function buildSignOutAuditParams(
   session: { readonly id: string; readonly userId: string },
   context:
@@ -67,8 +58,6 @@ export function buildSignOutAuditParams(
   };
 }
 
-// Pairs with `emailAndPassword.onPasswordReset`. The hook only fires on a
-// successful reset, so no filtering is needed here.
 export function buildPasswordResetAuditParams(
   user: { readonly id: string },
   request: Request | undefined,
@@ -82,7 +71,6 @@ export function buildPasswordResetAuditParams(
   };
 }
 
-// Pure builder. Tests cover this; the db.insert path is a thin wrapper.
 export function buildAuditRow(params: AuditParams): AuditRow {
   const ip =
     params.ip !== undefined
@@ -108,12 +96,7 @@ export function buildAuditRow(params: AuditParams): AuditRow {
   };
 }
 
-// Async — awaited by callers so audit happens before the response. If the
-// insert fails (DB down, schema drift), we don't fail the caller; we emit a
-// structured error log instead, so the audit trail is at least preserved in
-// the log aggregator. This is a deliberate compliance-vs-availability
-// trade-off: an LMS staying up matters more than every audit row hitting
-// the table, but we always want a paper trail somewhere.
+// Fails open: if the DB insert fails we log but don't crash the caller.
 export async function audit(params: AuditParams): Promise<void> {
   const row = buildAuditRow(params);
   try {
