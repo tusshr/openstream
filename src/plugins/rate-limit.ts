@@ -21,20 +21,11 @@ export type RateLimitOptions = {
   readonly windowSec: number;
 };
 
-// Just the slice of Elysia's handler context we need. Typing it structurally
-// (rather than reaching into Elysia's `Context` type) keeps the factory
-// testable with a plain object and avoids coupling to a specific Elysia
-// version's context layout. Header values widen to `string | number` to
-// match Elysia's `HTTPHeaders` so tests and real routes share one type.
 export type RateLimitContext = {
   readonly request: Request;
   readonly set: { headers: Record<string, string | number> };
 };
 
-// Returned shape on a 429. `retryAfterSeconds` mirrors the Retry-After
-// header for clients that prefer the JSON envelope. Exported as a TypeBox
-// schema so rate-limited routes can declare it in their `response` map and
-// satisfy Elysia's static response-shape checks.
 export const tooManyRequestsResponseSchema = t.Object({
   error: t.Object({
     code: t.Literal("TOO_MANY_REQUESTS"),
@@ -46,20 +37,23 @@ export const tooManyRequestsResponseSchema = t.Object({
 export type TooManyRequestsResponse =
   typeof tooManyRequestsResponseSchema.static;
 
-// Returns a `beforeHandle` function. Plug it into a route's options to
-// throttle just that route: `beforeHandle: rateLimit({ key, max, windowSec })`.
 export function rateLimit(options: RateLimitOptions) {
   return async (ctx: RateLimitContext) => {
-    const identity = extractIp(ctx.request) ?? "anon";
+    const identity = (extractIp(ctx.request) ?? "anon").slice(0, 64);
     const redisKey = `ratelimit:${options.key}:${identity}`;
 
     let count: number;
     let ttl: number;
     try {
       count = Number(await redis.send("INCR", [redisKey]));
+      if (Number.isNaN(count)) {
+        logger.warn(
+          { bucket: options.key },
+          "rate-limit: INCR returned NaN, failing open",
+        );
+        return;
+      }
       if (count === 1) {
-        // First hit in the window — arm the TTL. Doing this only when
-        // count === 1 keeps the window aligned to the first request.
         await redis.send("EXPIRE", [redisKey, String(options.windowSec)]);
         ttl = options.windowSec;
       } else {
