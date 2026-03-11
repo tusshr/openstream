@@ -6,7 +6,7 @@ import type {
   ApiResponse,
   PaginationLinks,
   PaginationMeta,
-} from "@/lib/api/contracts";
+} from "@/lib/api/models";
 import {
   ApiErrorResponseSchema,
   collectionOf,

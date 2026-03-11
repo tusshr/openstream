@@ -50,3 +50,14 @@ export const collectionOf = <T extends TSchema>(itemSchema: T) =>
     meta: PaginationMetaSchema,
     links: t.Optional(PaginationLinksSchema),
   });
+
+export type PaginationMeta = typeof PaginationMetaSchema.static;
+export type PaginationLinks = typeof PaginationLinksSchema.static;
+export type FieldError = typeof FieldErrorSchema.static;
+export type ApiError = typeof ApiErrorSchema.static;
+export type ApiErrorResponse = typeof ApiErrorResponseSchema.static;
+export type ApiResponse<T> = {
+  data: T;
+  meta?: PaginationMeta;
+  links?: PaginationLinks;
+};
