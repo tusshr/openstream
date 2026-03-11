@@ -3,6 +3,10 @@ import { env } from "@/env";
 import { logger } from "@/lib/logger";
 import { httpServer, registerGracefulShutdown } from "@/lib/shutdown";
 
+process.on("unhandledRejection", (reason) => {
+  logger.fatal({ err: reason }, "unhandled rejection");
+});
+
 const port = env.PORT ? Number(env.PORT) : 8080;
 
 app.listen(port);

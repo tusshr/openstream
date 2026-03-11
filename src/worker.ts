@@ -11,6 +11,10 @@ import { health } from "@/modules/health";
 import { startWorker } from "@/modules/jobs";
 import { requestLogger } from "@/plugins/logger";
 
+process.on("unhandledRejection", (reason) => {
+  logger.fatal({ err: reason }, "unhandled rejection");
+});
+
 // Minimal HTTP surface for the worker. Only /livez and /readyz so the PaaS
 // (Coolify / Dokku) can probe liveness and readiness. No business routes —
 // the worker is a queue consumer, not an HTTP server.
