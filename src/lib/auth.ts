@@ -11,6 +11,7 @@ import {
   buildPasswordResetAuditParams,
   buildSignOutAuditParams,
 } from "@/lib/audit";
+import { generateId } from "@/lib/id";
 import { enqueueEmail } from "@/modules/jobs";
 
 import { redis } from "./redis";
@@ -110,7 +111,7 @@ export const auth = betterAuth({
 
   advanced: {
     useSecureCookies: env.NODE_ENV === "production",
-    database: { generateId: () => crypto.randomUUID() },
+    database: { generateId: generateId },
   },
 
   // Audit hooks fire on DB writes — more reliable than endpoint hooks which

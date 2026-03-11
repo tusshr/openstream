@@ -8,6 +8,8 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 
+import { generateId } from "@/lib/id";
+
 export const user = pgTable(
   "user",
   {
@@ -110,9 +112,7 @@ export const twoFactor = pgTable(
 export const auditLog = pgTable(
   "audit_log",
   {
-    id: text("id")
-      .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
+    id: text("id").primaryKey().$defaultFn(generateId),
     actorId: text("actor_id"),
     action: text("action").notNull(),
     resourceType: text("resource_type").notNull(),
