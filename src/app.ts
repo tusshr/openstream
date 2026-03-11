@@ -11,7 +11,9 @@ import { requestLogger } from "@/plugins/logger";
 import { openapi } from "@/plugins/openapi";
 import { securityHeaders } from "@/plugins/security-headers";
 
-export const app = new Elysia()
+export const app = new Elysia({
+  serve: { maxRequestBodySize: 1 * 1024 * 1024 },
+})
   .use(requestLogger)
   .onError(({ code, error }) => {
     switch (code) {
