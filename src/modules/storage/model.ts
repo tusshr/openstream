@@ -86,6 +86,19 @@ export const DeleteResponseSchema = t.Object({
   key: t.String({ minLength: 1 }),
 });
 
+export const ListFilesQuerySchema = t.Object({
+  cursor: t.Optional(t.String({ minLength: 1, maxLength: 2048 })),
+  limit: t.Optional(t.Number({ minimum: 1, maximum: 100, default: 50 })),
+});
+
+export const FileItemSchema = t.Object({
+  key: t.String({ minLength: 1 }),
+  purpose: t.String({ minLength: 1 }),
+  fileName: t.String({ minLength: 1 }),
+  size: t.Number({ minimum: 0 }),
+  lastModified: t.String({ format: "date-time" }),
+});
+
 export const ForbiddenResponseSchema = t.Object({
   error: t.Object({
     code: t.Literal("FORBIDDEN"),
@@ -101,6 +114,8 @@ export const UnsupportedMediaTypeResponseSchema = t.Object({
   }),
 });
 
+export type ListFilesQuery = typeof ListFilesQuerySchema.static;
+export type FileItem = typeof FileItemSchema.static;
 export type PresignUploadBody = typeof PresignUploadBodySchema.static;
 export type KeyQuery = typeof KeyQuerySchema.static;
 export type PresignedResponse = typeof PresignedResponseSchema.static;

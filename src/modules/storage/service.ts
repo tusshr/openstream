@@ -2,6 +2,7 @@ import { s3 } from "@/lib/storage";
 
 import {
   type DeleteResponse,
+  type FileItem,
   PRESIGN_TTL_SECONDS,
   type PresignedResponse,
   type PresignUploadBody,
@@ -71,6 +72,15 @@ export type PresignDownloadResult =
 export type DeleteFileResult =
   | ServiceOk<DeleteResponse>
   | { readonly kind: "forbidden"; readonly reason: string };
+
+export type ListFilesData = {
+  readonly items: FileItem[];
+  readonly hasMore: boolean;
+  readonly nextCursor: string | null;
+  readonly limit: number;
+};
+
+export type ListFilesResult = ServiceOk<ListFilesData>;
 
 function slugifyFileName(fileName: string): string {
   const cleaned = fileName
@@ -164,6 +174,42 @@ export class StorageService {
         key,
         expiresInSeconds: PRESIGN_TTL_SECONDS,
         maxBytes: largestUploadCap(),
+      },
+    };
+  }
+
+  async listFiles(
+    userId: string,
+    options: { cursor?: string; limit: number },
+  ): Promise<ListFilesResult> {
+    const prefix = `${KEY_PREFIX}/${userId}/`;
+    const result = await s3.list({
+      prefix,
+      maxKeys: options.limit,
+      ...(options.cursor ? { continuationToken: options.cursor } : {}),
+    });
+
+    const items: FileItem[] = (result.contents ?? []).map((file) => {
+      const segments = file.key.split("/");
+      // key layout: users/{userId}/{purpose}/{uuid}/{fileName}
+      const purpose = segments[2] ?? "unknown";
+      const fileName = segments[4] ?? segments[segments.length - 1] ?? file.key;
+      return {
+        key: file.key,
+        purpose,
+        fileName,
+        size: file.size ?? 0,
+        lastModified: file.lastModified ?? new Date().toISOString(),
+      };
+    });
+
+    return {
+      kind: "ok",
+      data: {
+        items,
+        hasMore: result.isTruncated ?? false,
+        nextCursor: result.nextContinuationToken ?? null,
+        limit: options.limit,
       },
     };
   }

@@ -1,15 +1,17 @@
 import { Elysia, status } from "elysia";
 
 import { audit } from "@/lib/audit";
-import { dataOf, ok } from "@/lib/response";
+import { collectionOf, dataOf, ok } from "@/lib/response";
 import { authMacro } from "@/modules/auth";
 import { rateLimit, tooManyRequestsResponseSchema } from "@/plugins/rate-limit";
 
 import {
   DeleteResponseSchema,
+  FileItemSchema,
   type ForbiddenResponse,
   ForbiddenResponseSchema,
   KeyQuerySchema,
+  ListFilesQuerySchema,
   PresignedResponseSchema,
   PresignUploadBodySchema,
   type UnsupportedMediaTypeResponse,
@@ -32,6 +34,8 @@ export const storage = new Elysia({ prefix: "/storage", name: "storage" })
     "storage.delete.response": dataOf(DeleteResponseSchema),
     "storage.forbidden.response": ForbiddenResponseSchema,
     "storage.unsupported.response": UnsupportedMediaTypeResponseSchema,
+    "storage.files.list.query": ListFilesQuerySchema,
+    "storage.files.list.response": collectionOf(FileItemSchema),
     "rate-limit.response": tooManyRequestsResponseSchema,
   })
   .post(
@@ -111,6 +115,45 @@ export const storage = new Elysia({ prefix: "/storage", name: "storage" })
         summary: "Create presigned download URL",
         description:
           "Returns a short-lived S3 URL the client uses to GET directly. Responds 403 if the key does not belong to the caller. Admin role bypasses the ownership check.",
+        tags: ["Storage"],
+        security: [{ sessionCookie: [] }],
+      },
+    },
+  )
+  .get(
+    "/files",
+    async ({ query, user }) => {
+      const limit = query.limit ?? 50;
+      const result = await storageService.listFiles(user.id, {
+        ...(query.cursor ? { cursor: query.cursor } : {}),
+        limit,
+      });
+      return {
+        data: result.data.items,
+        meta: {
+          hasMore: result.data.hasMore,
+          nextCursor: result.data.nextCursor,
+          previousCursor: null,
+          limit: result.data.limit,
+        },
+      };
+    },
+    {
+      auth: true,
+      beforeHandle: rateLimit({
+        key: "storage.files.list",
+        max: 60,
+        windowSec: 60,
+      }),
+      query: "storage.files.list.query",
+      response: {
+        200: "storage.files.list.response",
+        429: "rate-limit.response",
+      },
+      detail: {
+        summary: "List files",
+        description:
+          "Returns a cursor-paginated list of the caller's uploaded files. Pass `cursor` from the previous response's `meta.nextCursor` to fetch the next page.",
         tags: ["Storage"],
         security: [{ sessionCookie: [] }],
       },
