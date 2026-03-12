@@ -1,4 +1,3 @@
-import js from "@eslint/js";
 import tsPlugin from "@typescript-eslint/eslint-plugin";
 import tsParser from "@typescript-eslint/parser";
 import prettier from "eslint-config-prettier/flat";
@@ -9,7 +8,6 @@ import { defineConfig, globalIgnores } from "eslint/config";
 import globals from "globals";
 
 export default defineConfig([
-  js.configs.recommended,
   prettier,
   globalIgnores([
     "node_modules/**",
@@ -33,8 +31,6 @@ export default defineConfig([
       globals: {
         ...globals.node,
         ...globals.es2021,
-        // Bun runtime globals. bun-types provides the TS shape but ESLint's
-        // no-undef rule needs them declared here separately.
         Bun: "readonly",
       },
       parserOptions: {
