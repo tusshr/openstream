@@ -3,9 +3,9 @@ import { Elysia } from "elysia";
 import { env } from "@/env";
 import { logger } from "@/lib/logger";
 import {
-  type Closeable,
   httpServer,
   registerGracefulShutdown,
+  type Closeable,
 } from "@/lib/shutdown";
 import { health } from "@/modules/health";
 import { startWorker } from "@/modules/jobs";

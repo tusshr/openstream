@@ -1,4 +1,4 @@
-import { type Config, defineConfig } from "drizzle-kit";
+import { defineConfig, type Config } from "drizzle-kit";
 
 export default defineConfig({
   dialect: "postgresql",

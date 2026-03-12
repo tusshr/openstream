@@ -1,16 +1,14 @@
 import { t, type TSchema } from "elysia";
 
-import type {
-  ApiError,
-  ApiErrorResponse,
-  ApiResponse,
-  PaginationLinks,
-  PaginationMeta,
-} from "@/lib/api/models";
 import {
   ApiErrorResponseSchema,
   collectionOf,
   responseOf,
+  type ApiError,
+  type ApiErrorResponse,
+  type ApiResponse,
+  type PaginationLinks,
+  type PaginationMeta,
 } from "@/lib/api/models";
 
 export function ok<T>(data: T): { data: T } {

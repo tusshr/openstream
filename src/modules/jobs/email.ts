@@ -1,10 +1,10 @@
-import { type Static, Type } from "@sinclair/typebox";
+import { Type, type Static } from "@sinclair/typebox";
 import { Value } from "@sinclair/typebox/value";
 
 import {
+  sendEmail,
   type EmailMessage,
   type EmailSendResult,
-  sendEmail,
 } from "@/lib/email";
 import { logger } from "@/lib/logger";
 
