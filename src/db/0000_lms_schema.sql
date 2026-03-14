@@ -41,3 +41,38 @@ CREATE TABLE "categories" (
 	CONSTRAINT "categories_slug_unique" UNIQUE("slug")
 );
 --> statement-breakpoint
+CREATE TABLE "certificates" (
+	"id" text PRIMARY KEY NOT NULL,
+	"user_id" text NOT NULL,
+	"course_id" text NOT NULL,
+	"enrollment_id" text NOT NULL,
+	"verification_code" text NOT NULL,
+	"issued_at" timestamp DEFAULT now() NOT NULL,
+	CONSTRAINT "certificates_verification_code_unique" UNIQUE("verification_code")
+);
+--> statement-breakpoint
+CREATE TABLE "chapters" (
+	"id" text PRIMARY KEY NOT NULL,
+	"course_id" text NOT NULL,
+	"title" text NOT NULL,
+	"position" smallint DEFAULT 0 NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "course_reviews" (
+	"id" text PRIMARY KEY NOT NULL,
+	"user_id" text NOT NULL,
+	"course_id" text NOT NULL,
+	"rating" smallint NOT NULL,
+	"body" text,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "course_tags" (
+	"course_id" text NOT NULL,
+	"tag_id" text NOT NULL,
+	CONSTRAINT "course_tags_course_id_tag_id_pk" PRIMARY KEY("course_id","tag_id")
+);
+--> statement-breakpoint
