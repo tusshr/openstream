@@ -76,3 +76,40 @@ CREATE TABLE "course_tags" (
 	CONSTRAINT "course_tags_course_id_tag_id_pk" PRIMARY KEY("course_id","tag_id")
 );
 --> statement-breakpoint
+CREATE TABLE "courses" (
+	"id" text PRIMARY KEY NOT NULL,
+	"educator_id" text NOT NULL,
+	"category_id" text,
+	"title" text NOT NULL,
+	"slug" text NOT NULL,
+	"description" text,
+	"thumbnail_key" text,
+	"preview_video_key" text,
+	"level" "course_level" DEFAULT 'beginner' NOT NULL,
+	"status" "course_status" DEFAULT 'draft' NOT NULL,
+	"language" text DEFAULT 'en' NOT NULL,
+	"price" numeric(10, 2) DEFAULT '0' NOT NULL,
+	"enrolled_count" integer DEFAULT 0 NOT NULL,
+	"review_count" integer DEFAULT 0 NOT NULL,
+	"average_rating" numeric(4, 2),
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"published_at" timestamp,
+	"updated_at" timestamp DEFAULT now() NOT NULL,
+	"search" "tsvector" GENERATED ALWAYS AS (setweight(to_tsvector('english', "courses"."title"), 'A') || setweight(to_tsvector('english', coalesce("courses"."description", '')), 'B')) STORED,
+	CONSTRAINT "courses_slug_unique" UNIQUE("slug")
+);
+--> statement-breakpoint
+CREATE TABLE "educator_profiles" (
+	"id" text PRIMARY KEY NOT NULL,
+	"user_id" text NOT NULL,
+	"bio" text,
+	"headline" text,
+	"website" text,
+	"twitter" text,
+	"linkedin" text,
+	"youtube" text,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL,
+	CONSTRAINT "educator_profiles_user_id_unique" UNIQUE("user_id")
+);
+--> statement-breakpoint
