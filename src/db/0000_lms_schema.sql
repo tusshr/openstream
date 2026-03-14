@@ -113,3 +113,47 @@ CREATE TABLE "educator_profiles" (
 	CONSTRAINT "educator_profiles_user_id_unique" UNIQUE("user_id")
 );
 --> statement-breakpoint
+CREATE TABLE "enrollments" (
+	"id" text PRIMARY KEY NOT NULL,
+	"user_id" text NOT NULL,
+	"course_id" text NOT NULL,
+	"status" "enrollment_status" DEFAULT 'active' NOT NULL,
+	"enrolled_at" timestamp DEFAULT now() NOT NULL,
+	"completed_at" timestamp
+);
+--> statement-breakpoint
+CREATE TABLE "lesson_attachments" (
+	"id" text PRIMARY KEY NOT NULL,
+	"lesson_id" text NOT NULL,
+	"name" text NOT NULL,
+	"file_key" text NOT NULL,
+	"file_size" bigint,
+	"mime_type" text,
+	"created_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "lesson_progress" (
+	"id" text PRIMARY KEY NOT NULL,
+	"user_id" text NOT NULL,
+	"lesson_id" text NOT NULL,
+	"course_id" text NOT NULL,
+	"completed_at" timestamp,
+	"watched_seconds" integer DEFAULT 0 NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "lessons" (
+	"id" text PRIMARY KEY NOT NULL,
+	"chapter_id" text NOT NULL,
+	"course_id" text NOT NULL,
+	"title" text NOT NULL,
+	"type" "lesson_type" DEFAULT 'video' NOT NULL,
+	"position" smallint DEFAULT 0 NOT NULL,
+	"is_preview" boolean DEFAULT false NOT NULL,
+	"video_key" text,
+	"duration_seconds" integer,
+	"content" text,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
