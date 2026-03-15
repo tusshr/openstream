@@ -157,3 +157,23 @@ CREATE TABLE "lessons" (
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
+CREATE TABLE "order_items" (
+	"id" text PRIMARY KEY NOT NULL,
+	"order_id" text NOT NULL,
+	"course_id" text NOT NULL,
+	"enrollment_id" text,
+	"unit_price" numeric(10, 2) NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "orders" (
+	"id" text PRIMARY KEY NOT NULL,
+	"user_id" text NOT NULL,
+	"status" "order_status" DEFAULT 'pending' NOT NULL,
+	"total_amount" numeric(10, 2) NOT NULL,
+	"payment_provider" text,
+	"payment_reference" text,
+	"metadata" jsonb,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
