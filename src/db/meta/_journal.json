@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1779904684446,
+      "tag": "0000_lms_schema",
+      "breakpoints": true
+    }
+  ]
+}
