@@ -253,3 +253,40 @@ ALTER TABLE "order_items" ADD CONSTRAINT "order_items_enrollment_id_enrollments_
 ALTER TABLE "orders" ADD CONSTRAINT "orders_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "session" ADD CONSTRAINT "session_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "two_factor" ADD CONSTRAINT "two_factor_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+CREATE INDEX "account_user_id_idx" ON "account" USING btree ("user_id");--> statement-breakpoint
+CREATE INDEX "account_provider_idx" ON "account" USING btree ("account_id","provider_id");--> statement-breakpoint
+CREATE INDEX "audit_log_actor_idx" ON "audit_log" USING btree ("actor_id","created_at");--> statement-breakpoint
+CREATE INDEX "audit_log_resource_idx" ON "audit_log" USING btree ("resource_type","resource_id","created_at");--> statement-breakpoint
+CREATE INDEX "audit_log_action_idx" ON "audit_log" USING btree ("action","created_at");--> statement-breakpoint
+CREATE INDEX "audit_log_created_at_idx" ON "audit_log" USING btree ("created_at");--> statement-breakpoint
+CREATE UNIQUE INDEX "certificates_user_course_idx" ON "certificates" USING btree ("user_id","course_id");--> statement-breakpoint
+CREATE INDEX "certificates_verification_code_idx" ON "certificates" USING btree ("verification_code");--> statement-breakpoint
+CREATE INDEX "chapters_course_id_idx" ON "chapters" USING btree ("course_id");--> statement-breakpoint
+CREATE INDEX "chapters_course_position_idx" ON "chapters" USING btree ("course_id","position");--> statement-breakpoint
+CREATE UNIQUE INDEX "course_reviews_user_course_idx" ON "course_reviews" USING btree ("user_id","course_id");--> statement-breakpoint
+CREATE INDEX "course_reviews_course_id_idx" ON "course_reviews" USING btree ("course_id");--> statement-breakpoint
+CREATE INDEX "course_tags_tag_id_idx" ON "course_tags" USING btree ("tag_id");--> statement-breakpoint
+CREATE INDEX "courses_educator_id_idx" ON "courses" USING btree ("educator_id");--> statement-breakpoint
+CREATE INDEX "courses_category_id_idx" ON "courses" USING btree ("category_id");--> statement-breakpoint
+CREATE INDEX "courses_status_idx" ON "courses" USING btree ("status");--> statement-breakpoint
+CREATE INDEX "courses_slug_idx" ON "courses" USING btree ("slug");--> statement-breakpoint
+CREATE INDEX "courses_published_at_idx" ON "courses" USING btree ("published_at");--> statement-breakpoint
+CREATE INDEX "courses_search_idx" ON "courses" USING gin ("search");--> statement-breakpoint
+CREATE UNIQUE INDEX "enrollments_user_course_idx" ON "enrollments" USING btree ("user_id","course_id");--> statement-breakpoint
+CREATE INDEX "enrollments_course_id_idx" ON "enrollments" USING btree ("course_id");--> statement-breakpoint
+CREATE INDEX "enrollments_user_id_idx" ON "enrollments" USING btree ("user_id");--> statement-breakpoint
+CREATE INDEX "lesson_attachments_lesson_id_idx" ON "lesson_attachments" USING btree ("lesson_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "lesson_progress_user_lesson_idx" ON "lesson_progress" USING btree ("user_id","lesson_id");--> statement-breakpoint
+CREATE INDEX "lesson_progress_user_course_idx" ON "lesson_progress" USING btree ("user_id","course_id");--> statement-breakpoint
+CREATE INDEX "lessons_chapter_id_idx" ON "lessons" USING btree ("chapter_id");--> statement-breakpoint
+CREATE INDEX "lessons_course_id_idx" ON "lessons" USING btree ("course_id");--> statement-breakpoint
+CREATE INDEX "lessons_course_position_idx" ON "lessons" USING btree ("course_id","position");--> statement-breakpoint
+CREATE INDEX "order_items_order_id_idx" ON "order_items" USING btree ("order_id");--> statement-breakpoint
+CREATE INDEX "order_items_course_id_idx" ON "order_items" USING btree ("course_id");--> statement-breakpoint
+CREATE INDEX "orders_user_id_idx" ON "orders" USING btree ("user_id");--> statement-breakpoint
+CREATE INDEX "orders_status_idx" ON "orders" USING btree ("status");--> statement-breakpoint
+CREATE INDEX "orders_payment_reference_idx" ON "orders" USING btree ("payment_reference");--> statement-breakpoint
+CREATE INDEX "session_user_id_idx" ON "session" USING btree ("user_id");--> statement-breakpoint
+CREATE INDEX "session_token_idx" ON "session" USING btree ("token");--> statement-breakpoint
+CREATE UNIQUE INDEX "two_factor_user_id_idx" ON "two_factor" USING btree ("user_id");--> statement-breakpoint
+CREATE INDEX "verification_identifier_idx" ON "verification" USING btree ("identifier");
