@@ -17,15 +17,38 @@ const docsPlugin = openApiPlugin({
     info: {
       title: "OpenStream API",
       description:
-        "OpenStream backend API for authentication, user data, and file storage.",
+        "REST API for the OpenStream LMS platform. Covers authentication, user profiles, course catalog, chapter and lesson management, enrollments, progress tracking, reviews, certificates, orders, and file storage.",
       version: "1.0.0",
     },
     tags: [
-      { name: "System", description: "Service-level endpoints" },
-      { name: "Users", description: "Authenticated user endpoints" },
+      {
+        name: "System",
+        description: "Service-level health and meta endpoints",
+      },
+      { name: "Users", description: "Authenticated user profile" },
+      { name: "Educators", description: "Educator profile management" },
+      {
+        name: "Courses",
+        description: "Course catalog — create, publish, search",
+      },
+      { name: "Categories", description: "Course category taxonomy" },
+      { name: "Tags", description: "Course tag management" },
+      {
+        name: "Chapters",
+        description: "Course chapter ordering and management",
+      },
+      { name: "Lessons", description: "Lesson content and attachments" },
+      { name: "Enrollments", description: "Student enrollment lifecycle" },
+      { name: "Progress", description: "Per-lesson watch progress tracking" },
+      { name: "Reviews", description: "Course ratings and reviews" },
+      {
+        name: "Certificates",
+        description: "Completion certificates and verification",
+      },
+      { name: "Orders", description: "Purchase and payment management" },
       {
         name: "Storage",
-        description: "Presigned upload/download URLs and file management",
+        description: "Presigned S3 upload/download URLs and file management",
       },
     ],
     components: {
@@ -41,7 +64,7 @@ const docsPlugin = openApiPlugin({
   },
   scalar: {
     hideClientButton: false,
-    showSidebar: false,
+    showSidebar: true,
     showDeveloperTools: "localhost",
     showToolbar: "never",
     operationTitleSource: "summary",
