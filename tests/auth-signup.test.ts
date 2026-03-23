@@ -10,6 +10,14 @@ import { account, auditLog, user, verification } from "@/db/schema";
 // contract without needing a live Postgres.
 
 type Insert = { table: unknown; values: Record<string, unknown> };
+type FakeDb = {
+  select: () => ReturnType<typeof thenableArray>;
+  insert: (table: unknown) => {
+    values: (values: Record<string, unknown>) => Promise<undefined>;
+  };
+  delete: () => { where: () => Promise<undefined> };
+  transaction: (cb: (tx: FakeDb) => Promise<unknown>) => Promise<unknown>;
+};
 
 const state = {
   existingUsers: [] as Array<{ id: string }>,
@@ -31,7 +39,7 @@ function thenableArray<T>(rows: T[]) {
   return builder;
 }
 
-const fakeDb = {
+const fakeDb: FakeDb = {
   select: () => thenableArray(state.existingUsers),
   insert: (table: unknown) => ({
     values: (values: Record<string, unknown>) => {
