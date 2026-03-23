@@ -79,7 +79,7 @@ export const storage = new Elysia({ prefix: "/storage", name: "storage" })
         description:
           "Returns a short-lived S3 URL the client uses to PUT directly. The server generates the object key from purpose + acting user; the client must echo the key back for download or delete. Responds 415 when contentType is not in the purpose's allowlist.",
         tags: ["Storage"],
-        security: [{ sessionCookie: [] }],
+        security: [{ sessionCookie: [], csrfHeader: [] }],
       },
     },
   )
@@ -201,7 +201,7 @@ export const storage = new Elysia({ prefix: "/storage", name: "storage" })
         description:
           "Deletes a file from S3 by its object key (passed as ?key=). Responds 403 if the key does not belong to the caller. Idempotent: deleting a non-existent key still returns 200.",
         tags: ["Storage"],
-        security: [{ sessionCookie: [] }],
+        security: [{ sessionCookie: [], csrfHeader: [] }],
       },
     },
   );

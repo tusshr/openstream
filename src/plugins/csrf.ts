@@ -23,23 +23,10 @@ const CSRF_HEADER_VALUE = "openstream";
 // browser navigation, and image loads working without a header.
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
-// /api/auth/* is handled by better-auth, which performs its own CSRF defense
-// (origin check + Sec-Fetch-Site). Adding ours on top would double-reject
-// requests with otherwise correct better-auth headers. Document any future
-// exemption here with the framework that owns the defense.
-const EXEMPT_PATH_PREFIXES = ["/api/auth/"] as const;
-
-function isExemptPath(pathname: string): boolean {
-  return EXEMPT_PATH_PREFIXES.some((prefix) => pathname.startsWith(prefix));
-}
-
 export const csrf = new Elysia({ name: "csrf" }).onBeforeHandle(
   { as: "global" },
   ({ request }) => {
     if (SAFE_METHODS.has(request.method)) return;
-
-    const url = new URL(request.url);
-    if (isExemptPath(url.pathname)) return;
 
     const received = request.headers.get(CSRF_HEADER);
     if (received !== CSRF_HEADER_VALUE) {

@@ -2,7 +2,7 @@ import { openapi as openApiPlugin } from "@elysiajs/openapi";
 import { Elysia, status } from "elysia";
 
 import { env } from "@/env";
-import { auth } from "@/lib/auth";
+import { getSession } from "@/lib/session";
 
 const DOCS_PATH_PREFIXES = ["/openapi", "/scalar", "/api-1"] as const;
 
@@ -10,6 +10,16 @@ function looksLikeDocsRequest(pathname: string): boolean {
   return DOCS_PATH_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   );
+}
+
+function parseCookie(headers: Headers, name: string): string | null {
+  const raw = headers.get("cookie") ?? "";
+  for (const part of raw.split(";")) {
+    const eq = part.indexOf("=");
+    if (eq < 0) continue;
+    if (part.slice(0, eq).trim() === name) return part.slice(eq + 1).trim();
+  }
+  return null;
 }
 
 const docsPlugin = openApiPlugin({
@@ -24,6 +34,11 @@ const docsPlugin = openApiPlugin({
       {
         name: "System",
         description: "Service-level health and meta endpoints",
+      },
+      {
+        name: "Auth",
+        description:
+          "Authentication — sign-up, sign-in, session, 2FA, password reset",
       },
       { name: "Users", description: "Authenticated user profile" },
       { name: "Educators", description: "Educator profile management" },
@@ -56,8 +71,15 @@ const docsPlugin = openApiPlugin({
         sessionCookie: {
           type: "apiKey",
           in: "cookie",
-          name: "better-auth.session_token",
-          description: "Better Auth session cookie",
+          name: "session_token",
+          description: "Session cookie set after sign-in.",
+        },
+        csrfHeader: {
+          type: "apiKey",
+          in: "header",
+          name: "x-requested-with",
+          description:
+            "Required on all state-changing requests (POST/PUT/PATCH/DELETE). Value must be exactly **openstream**. Add this in Scalar's Authentication panel once and it will be sent with every request.",
         },
       },
     },
@@ -109,9 +131,8 @@ export const openapi = new Elysia({ name: "openapi-docs" })
     const url = new URL(request.url);
     if (!looksLikeDocsRequest(url.pathname)) return;
 
-    const session = await auth.api
-      .getSession({ headers: request.headers })
-      .catch(() => null);
+    const token = parseCookie(request.headers, "session_token");
+    const session = token ? await getSession(token).catch(() => null) : null;
 
     if (!session || session.user.role !== "admin") {
       return status(404, { error: "Not Found" });
