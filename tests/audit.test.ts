@@ -1,12 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import {
-  buildAuditRow,
-  buildPasswordResetAuditParams,
-  buildSignOutAuditParams,
-  extractIp,
-  extractUserAgent,
-} from "@/lib/audit";
+import { buildAuditRow, extractIp, extractUserAgent } from "@/lib/audit";
 
 function requestWith(headers: Record<string, string>): Request {
   return new Request("http://localhost/anywhere", { headers });
@@ -134,66 +128,5 @@ describe("buildAuditRow", () => {
     });
     expect(row.ip).toBeNull();
     expect(row.userAgent).toBeNull();
-  });
-});
-
-describe("buildSignOutAuditParams", () => {
-  const session = { id: "session-1", userId: "user-1" };
-
-  test("emits an audit when context.path is '/sign-out'", () => {
-    const request = requestWith({ "x-forwarded-for": "203.0.113.1" });
-    const params = buildSignOutAuditParams(session, {
-      path: "/sign-out",
-      request,
-    });
-    expect(params).toEqual({
-      request,
-      actorId: "user-1",
-      action: "user.sign-out",
-      resourceType: "session",
-      resourceId: "session-1",
-    });
-  });
-
-  test("returns null for non-sign-out delete paths (e.g. admin revoke)", () => {
-    expect(
-      buildSignOutAuditParams(session, { path: "/admin/revoke-session" }),
-    ).toBeNull();
-  });
-
-  test("returns null when context is null", () => {
-    expect(buildSignOutAuditParams(session, null)).toBeNull();
-  });
-
-  test("returns null when context is undefined", () => {
-    expect(buildSignOutAuditParams(session, undefined)).toBeNull();
-  });
-
-  test("omits request key when the hook context has no request", () => {
-    const params = buildSignOutAuditParams(session, { path: "/sign-out" });
-    expect(params).not.toBeNull();
-    expect(params).not.toHaveProperty("request");
-  });
-});
-
-describe("buildPasswordResetAuditParams", () => {
-  const user = { id: "user-1" };
-
-  test("emits an audit with the request when provided", () => {
-    const request = requestWith({ "x-forwarded-for": "203.0.113.1" });
-    expect(buildPasswordResetAuditParams(user, request)).toEqual({
-      request,
-      actorId: "user-1",
-      action: "user.password-reset",
-      resourceType: "user",
-      resourceId: "user-1",
-    });
-  });
-
-  test("omits the request key when no request is supplied", () => {
-    const params = buildPasswordResetAuditParams(user, undefined);
-    expect(params).not.toHaveProperty("request");
-    expect(params.actorId).toBe("user-1");
-    expect(params.action).toBe("user.password-reset");
   });
 });

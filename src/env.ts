@@ -10,6 +10,7 @@ const EnvSchema = Type.Object({
   DATABASE_URL: Type.String({ minLength: 1 }),
   REDIS_URL: Type.String({ minLength: 1 }),
   ALLOWED_ORIGIN: Type.Optional(Type.String({ minLength: 1 })),
+  APP_URL: Type.Optional(Type.String({ minLength: 1 })),
   PORT: Type.Optional(Type.String({ pattern: "^[0-9]{1,5}$" })),
   S3_ACCESS_KEY_ID: Type.String({ minLength: 1 }),
   S3_SECRET_ACCESS_KEY: Type.String({ minLength: 1 }),
@@ -36,6 +37,7 @@ const raw = Object.fromEntries(
     DATABASE_URL: process.env.DATABASE_URL,
     REDIS_URL: process.env.REDIS_URL,
     ALLOWED_ORIGIN: process.env.ALLOWED_ORIGIN,
+    APP_URL: process.env.APP_URL,
     PORT: process.env.PORT,
     S3_ACCESS_KEY_ID: process.env.S3_ACCESS_KEY_ID,
     S3_SECRET_ACCESS_KEY: process.env.S3_SECRET_ACCESS_KEY,
@@ -66,3 +68,14 @@ if (errors.length > 0) {
 }
 
 export const env = Value.Decode(EnvSchema, raw) as Static<typeof EnvSchema>;
+
+// ALLOWED_ORIGIN is optional in the schema so local dev works without it, but
+// in production an unset origin makes the cors plugin allow ALL origins with
+// credentials — which reopens the cross-origin `fetch()` CSRF vector that the
+// `x-requested-with` header check relies on cors to close. Fail fast instead.
+if (env.NODE_ENV === "production" && env.ALLOWED_ORIGIN === undefined) {
+  throw new Error(
+    "ALLOWED_ORIGIN must be set in production. Without it, CORS allows all " +
+      "origins with credentials, defeating CSRF protection.",
+  );
+}

@@ -36,41 +36,6 @@ export function extractUserAgent(request: Request): string | null {
   return request.headers.get("user-agent");
 }
 
-// session.delete fires from many places (sign-out, admin revoke, password reset cascade).
-// We only audit user-initiated sign-outs; other deletes get their own entries.
-export function buildSignOutAuditParams(
-  session: { readonly id: string; readonly userId: string },
-  context:
-    | {
-        readonly path?: string | undefined;
-        readonly request?: Request | undefined;
-      }
-    | null
-    | undefined,
-): AuditParams | null {
-  if (context?.path !== "/sign-out") return null;
-  return {
-    ...(context.request ? { request: context.request } : {}),
-    actorId: session.userId,
-    action: "user.sign-out",
-    resourceType: "session",
-    resourceId: session.id,
-  };
-}
-
-export function buildPasswordResetAuditParams(
-  user: { readonly id: string },
-  request: Request | undefined,
-): AuditParams {
-  return {
-    ...(request ? { request } : {}),
-    actorId: user.id,
-    action: "user.password-reset",
-    resourceType: "user",
-    resourceId: user.id,
-  };
-}
-
 export function buildAuditRow(params: AuditParams): AuditRow {
   const ip =
     params.ip !== undefined
