@@ -17,7 +17,7 @@ export default defineConfig([
     "**/*.config.{js,cjs,mjs,ts}",
   ]),
   {
-    files: ["src/**/*.ts"],
+    files: ["src/**/*.ts", "tests/**/*.ts", "scripts/**/*.ts"],
     plugins: {
       "@typescript-eslint": tsPlugin,
       "check-file": checkFile,
