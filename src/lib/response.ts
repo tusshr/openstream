@@ -6,7 +6,6 @@ import {
   responseOf,
   type ApiError,
   type ApiErrorResponse,
-  type ApiResponse,
   type PaginationLinks,
   type PaginationMeta,
 } from "@/lib/api/models";
@@ -23,7 +22,7 @@ export function okWithMeta<T>(
   data: T,
   meta: PaginationMeta,
   links?: PaginationLinks,
-): ApiResponse<T> {
+): { data: T; meta: PaginationMeta; links?: PaginationLinks } {
   return links === undefined ? { data, meta } : { data, meta, links };
 }
 

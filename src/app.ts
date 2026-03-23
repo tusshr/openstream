@@ -2,6 +2,8 @@ import { Elysia, t } from "elysia";
 
 import { buildValidationResponse } from "@/lib/validation";
 import { authMacro, authRoutes } from "@/modules/auth";
+import { categoriesModule } from "@/modules/categories";
+import { coursesModule } from "@/modules/courses";
 import { health } from "@/modules/health";
 import { storage } from "@/modules/storage";
 import { users } from "@/modules/users";
@@ -54,6 +56,8 @@ export const app = new Elysia({
   })
   .use(authRoutes)
   .use(authMacro)
-  .group("/api", (app) => app.use(storage).use(users));
+  .group("/api", (app) =>
+    app.use(storage).use(users).use(coursesModule).use(categoriesModule),
+  );
 
 export type App = typeof app;
