@@ -5,6 +5,7 @@ import { account, twoFactor, user, verification } from "@/db/schema";
 import { env } from "@/env";
 import { audit } from "@/lib/audit";
 import { generateId } from "@/lib/id";
+import { logger } from "@/lib/logger";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { redis } from "@/lib/redis";
 import { createSession, deleteUserSessions } from "@/lib/session";
@@ -147,24 +148,26 @@ export class AuthService {
     const now = new Date();
     const userId = generateId();
 
-    await db.insert(user).values({
-      id: generateId(),
-      name,
-      email: email.toLowerCase(),
-      emailVerified: false,
-      role: "user",
-      createdAt: now,
-      updatedAt: now,
-    });
+    await db.transaction(async (tx) => {
+      await tx.insert(user).values({
+        id: userId,
+        name,
+        email: email.toLowerCase(),
+        emailVerified: false,
+        role: "user",
+        createdAt: now,
+        updatedAt: now,
+      });
 
-    await db.insert(account).values({
-      id: generateId(),
-      accountId: userId,
-      providerId: "credential",
-      userId,
-      password: hash,
-      createdAt: now,
-      updatedAt: now,
+      await tx.insert(account).values({
+        id: generateId(),
+        accountId: userId,
+        providerId: "credential",
+        userId,
+        password: hash,
+        createdAt: now,
+        updatedAt: now,
+      });
     });
 
     const token = await createVerificationToken(
@@ -172,12 +175,19 @@ export class AuthService {
       24 * 60 * 60 * 1000,
     );
 
-    await enqueueEmail({
-      kind: "verification",
-      to: email,
-      name,
-      url: `${APP_URL}/verify-email?token=${token}`,
-    });
+    try {
+      await enqueueEmail({
+        kind: "verification",
+        to: email,
+        name,
+        url: `${APP_URL}/verify-email?token=${token}`,
+      });
+    } catch (error) {
+      logger.error(
+        { err: error, userId },
+        "sign-up: verification email enqueue failed",
+      );
+    }
 
     await audit({
       actorId: userId,
@@ -200,9 +210,6 @@ export class AuthService {
 
     const found = users[0];
 
-    // Always verify a dummy hash when no user found — prevents timing attacks
-    // that reveal whether an email is registered.
-    // 22-char salt + 43-char hash — valid base64 that will never match any password.
     const dummyHash =
       "$argon2id$v=19$m=65536,t=2,p=1$AAAAAAAAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
     const credentials = found
@@ -288,7 +295,7 @@ export class AuthService {
       .limit(1);
 
     const found = users[0];
-    if (!found || found.emailVerified) return; // silent — don't reveal account existence
+    if (!found || found.emailVerified) return;
 
     const token = await createVerificationToken(
       { type: "email-verify", userId: found.id },
@@ -311,7 +318,7 @@ export class AuthService {
       .limit(1);
 
     const found = users[0];
-    if (!found) return; // silent — don't reveal account existence
+    if (!found) return;
 
     const token = await createVerificationToken(
       { type: "password-reset", userId: found.id },
@@ -395,8 +402,6 @@ export class AuthService {
       .where(eq(user.id, payload.userId));
   }
 
-  // Returns { secret, uri } — client shows QR code, user scans it.
-  // Secret is stored in Redis until confirmed via enableTotp.
   async setupTotp(
     userId: string,
     email: string,
@@ -411,7 +416,6 @@ export class AuthService {
     return { secret, uri: totpUri(secret, email, "OpenStream") };
   }
 
-  // Verifies the first TOTP code, writes twoFactor row, returns plaintext backup codes.
   async enableTotp(userId: string, code: string): Promise<string[]> {
     const secret = await redis.get(`2fa_setup:${userId}`);
     if (!secret) {
