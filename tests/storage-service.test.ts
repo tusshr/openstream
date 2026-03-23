@@ -10,7 +10,6 @@ mock.module("@/lib/storage", () => ({
   },
 }));
 
-// eslint-disable-next-line import/first
 const { __testing, StorageService } = await import("@/modules/storage/service");
 
 const { slugifyFileName, buildObjectKey, checkKeyOwnership } = __testing;
@@ -48,7 +47,7 @@ describe("slugifyFileName", () => {
   });
 
   test("caps long names at 100 characters", () => {
-    const long = "a".repeat(500) + ".pdf";
+    const long = `${"a".repeat(500)}.pdf`;
     const slug = slugifyFileName(long);
     expect(slug.length).toBe(100);
   });
