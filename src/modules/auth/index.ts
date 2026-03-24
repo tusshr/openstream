@@ -1,8 +1,8 @@
 import { Elysia, status } from "elysia";
 
 import { env } from "@/env";
-import { buildAbility } from "@/lib/ability";
 import { getSession } from "@/lib/session";
+import { rateLimit } from "@/plugins/rate-limit";
 
 import {
   BackupCodeBodySchema,
@@ -28,6 +28,7 @@ const AUTH_ERROR_STATUS: Record<string, number> = {
   INVALID_TOKEN: 400,
   TOTP_INVALID: 400,
   TOTP_SETUP_EXPIRED: 400,
+  TOO_MANY_ATTEMPTS: 429,
   NOT_FOUND: 404,
 };
 
@@ -80,7 +81,6 @@ export const authMacro = new Elysia({ name: "auth-macro" }).macro({
       return {
         user: result.user,
         session: result.session,
-        ability: buildAbility(result.user),
       };
     },
   }),
@@ -108,6 +108,11 @@ export const authRoutes = new Elysia({ name: "auth", prefix: "/api/auth" })
           });
         },
         {
+          beforeHandle: rateLimit({
+            key: "auth.sign-up",
+            max: 10,
+            windowSec: 60,
+          }),
           body: SignUpBodySchema,
           detail: { summary: "Sign up", security: CSRF },
         },
@@ -132,6 +137,11 @@ export const authRoutes = new Elysia({ name: "auth", prefix: "/api/auth" })
           return { data: { user: serializeUser(result.user) } };
         },
         {
+          beforeHandle: rateLimit({
+            key: "auth.sign-in",
+            max: 10,
+            windowSec: 60,
+          }),
           body: SignInBodySchema,
           detail: { summary: "Sign in", security: CSRF },
         },
@@ -188,6 +198,11 @@ export const authRoutes = new Elysia({ name: "auth", prefix: "/api/auth" })
           };
         },
         {
+          beforeHandle: rateLimit({
+            key: "auth.resend-verification",
+            max: 5,
+            windowSec: 60,
+          }),
           body: EmailBodySchema,
           detail: { summary: "Resend verification email", security: CSRF },
         },
@@ -205,6 +220,11 @@ export const authRoutes = new Elysia({ name: "auth", prefix: "/api/auth" })
           };
         },
         {
+          beforeHandle: rateLimit({
+            key: "auth.forgot-password",
+            max: 5,
+            windowSec: 60,
+          }),
           body: EmailBodySchema,
           detail: { summary: "Forgot password", security: CSRF },
         },
@@ -244,6 +264,11 @@ export const authRoutes = new Elysia({ name: "auth", prefix: "/api/auth" })
           return { data: { user: serializeUser(result.user) } };
         },
         {
+          beforeHandle: rateLimit({
+            key: "auth.2fa.verify",
+            max: 10,
+            windowSec: 60,
+          }),
           body: TotpVerifyBodySchema,
           detail: { summary: "Verify 2FA code", security: CSRF },
         },
@@ -260,6 +285,11 @@ export const authRoutes = new Elysia({ name: "auth", prefix: "/api/auth" })
           return { data: { user: serializeUser(result.user) } };
         },
         {
+          beforeHandle: rateLimit({
+            key: "auth.2fa.verify-backup",
+            max: 10,
+            windowSec: 60,
+          }),
           body: BackupCodeBodySchema,
           detail: { summary: "Verify 2FA backup code", security: CSRF },
         },
