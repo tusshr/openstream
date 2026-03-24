@@ -31,6 +31,36 @@ describe("extractIp", () => {
   });
 });
 
+describe("extractIp with trusted proxy hops", () => {
+  test("hops=1 returns the rightmost entry — the IP our proxy actually saw", () => {
+    const r = requestWith({ "x-forwarded-for": "1.2.3.4, 203.0.113.9" });
+    expect(extractIp(r, 1)).toBe("203.0.113.9");
+  });
+
+  test("hops=2 returns the second-from-right entry", () => {
+    const r = requestWith({
+      "x-forwarded-for": "1.2.3.4, 203.0.113.9, 10.0.0.1",
+    });
+    expect(extractIp(r, 2)).toBe("203.0.113.9");
+  });
+
+  test("a spoofed leading XFF entry is ignored when hops=1", () => {
+    // Attacker prepends a fake IP; our proxy appends the real socket IP.
+    const r = requestWith({ "x-forwarded-for": "9.9.9.9, 203.0.113.9" });
+    expect(extractIp(r, 1)).toBe("203.0.113.9");
+  });
+
+  test("returns null when there are fewer entries than trusted hops", () => {
+    const r = requestWith({ "x-forwarded-for": "203.0.113.9" });
+    expect(extractIp(r, 2)).toBeNull();
+  });
+
+  test("hops=0 (default) keeps the leftmost value", () => {
+    const r = requestWith({ "x-forwarded-for": "1.2.3.4, 203.0.113.9" });
+    expect(extractIp(r, 0)).toBe("1.2.3.4");
+  });
+});
+
 describe("extractUserAgent", () => {
   test("reads the User-Agent header", () => {
     const r = requestWith({ "user-agent": "Mozilla/5.0 ..." });
