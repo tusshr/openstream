@@ -16,6 +16,10 @@ const EnvSchema = Type.Object({
   // real client IP from X-Forwarded-For (see lib/audit.ts). Default 0 (dev);
   // production behind one proxy/LB should set this to 1.
   TRUSTED_PROXY_HOPS: Type.Optional(Type.String({ pattern: "^[0-9]{1,2}$" })),
+  // Snowflake worker id (0-1023). EACH process must use a distinct value or
+  // ids can collide — the API defaults to 0, so the worker must set 1 (see
+  // package.json start:worker and the deploy manifest). Read by lib/id.ts.
+  WORKER_ID: Type.Optional(Type.String({ pattern: "^[0-9]{1,4}$" })),
   S3_ACCESS_KEY_ID: Type.String({ minLength: 1 }),
   S3_SECRET_ACCESS_KEY: Type.String({ minLength: 1 }),
   S3_BUCKET: Type.String({ minLength: 1 }),
@@ -44,6 +48,7 @@ const raw = Object.fromEntries(
     APP_URL: process.env.APP_URL,
     PORT: process.env.PORT,
     TRUSTED_PROXY_HOPS: process.env.TRUSTED_PROXY_HOPS,
+    WORKER_ID: process.env.WORKER_ID,
     S3_ACCESS_KEY_ID: process.env.S3_ACCESS_KEY_ID,
     S3_SECRET_ACCESS_KEY: process.env.S3_SECRET_ACCESS_KEY,
     S3_BUCKET: process.env.S3_BUCKET,

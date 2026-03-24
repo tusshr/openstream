@@ -3,8 +3,14 @@ const WORKER_BITS = 10n;
 const SEQUENCE_BITS = 12n;
 const MAX_SEQUENCE = (1n << SEQUENCE_BITS) - 1n;
 
+// Must be DISTINCT per process — the API uses 0, the worker must set
+// WORKER_ID=1 (see env.ts / package.json). Two processes sharing a worker id
+// can mint identical Snowflakes. Read straight from process.env (not @/env) so
+// this module stays usable in standalone scripts like the seed without
+// triggering full env validation. Falls back to 0 on a non-numeric value.
+const rawWorkerId = Number(process.env.WORKER_ID ?? 0);
 const workerId = BigInt(
-  Math.max(0, Math.min(1023, Number(process.env.WORKER_ID ?? 0))),
+  Number.isFinite(rawWorkerId) ? Math.max(0, Math.min(1023, rawWorkerId)) : 0,
 );
 
 let sequence = 0n;
