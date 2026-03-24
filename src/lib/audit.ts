@@ -1,6 +1,11 @@
 import { db } from "@/db";
 import { auditLog } from "@/db/schema";
+import { env } from "@/env";
 import { logger } from "@/lib/logger";
+
+const TRUSTED_PROXY_HOPS = env.TRUSTED_PROXY_HOPS
+  ? Number(env.TRUSTED_PROXY_HOPS)
+  : 0;
 
 export type AuditParams = {
   readonly action: string;
@@ -23,11 +28,20 @@ export type AuditRow = {
   readonly metadata: Record<string, unknown> | null;
 };
 
-export function extractIp(request: Request): string | null {
+export function extractIp(
+  request: Request,
+  trustedProxyHops = TRUSTED_PROXY_HOPS,
+): string | null {
   const xff = request.headers.get("x-forwarded-for");
   if (xff) {
-    const first = xff.split(",")[0]?.trim();
-    if (first) return first;
+    const parts = xff
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (parts.length > 0) {
+      const idx = trustedProxyHops > 0 ? parts.length - trustedProxyHops : 0;
+      if (idx >= 0 && idx < parts.length) return parts[idx]!;
+    }
   }
   return request.headers.get("x-real-ip");
 }
@@ -61,7 +75,6 @@ export function buildAuditRow(params: AuditParams): AuditRow {
   };
 }
 
-// Fails open: if the DB insert fails we log but don't crash the caller.
 export async function audit(params: AuditParams): Promise<void> {
   const row = buildAuditRow(params);
   try {
