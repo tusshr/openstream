@@ -16,6 +16,7 @@ import { enqueueEmail } from "@/modules/jobs";
 const APP_URL = env.APP_URL ?? "http://localhost:3000";
 const PENDING_2FA_TTL_SEC = 60 * 5;
 const BACKUP_CODE_COUNT = 10;
+const MAX_2FA_ATTEMPTS = 5;
 
 export class AuthError extends Error {
   constructor(
@@ -123,6 +124,26 @@ async function generateBackupCodes(): Promise<{
   const plain = Array.from({ length: BACKUP_CODE_COUNT }, generateBackupCode);
   const hashes = await Promise.all(plain.map(hashBackupCode));
   return { plain, hashes };
+}
+
+async function failTwoFactorAttempt(
+  pendingToken: string,
+  message: string,
+): Promise<never> {
+  const key = `2fa_attempts:${pendingToken}`;
+  const attempts = Number(await redis.send("INCR", [key]));
+  if (attempts === 1) {
+    await redis.send("EXPIRE", [key, String(PENDING_2FA_TTL_SEC)]);
+  }
+  if (attempts >= MAX_2FA_ATTEMPTS) {
+    await redis.del(`2fa_pending:${pendingToken}`);
+    await redis.del(key);
+    throw new AuthError(
+      "TOO_MANY_ATTEMPTS",
+      "Too many invalid codes. Please sign in again.",
+    );
+  }
+  throw new AuthError("TOTP_INVALID", message);
 }
 
 // ---------------------------------------------------------------------------
@@ -472,9 +493,10 @@ export class AuthService {
 
     const valid = await verifyTotp(tf.secret, code);
     if (!valid)
-      throw new AuthError("TOTP_INVALID", "Invalid authenticator code.");
+      await failTwoFactorAttempt(pendingToken, "Invalid authenticator code.");
 
     await redis.del(`2fa_pending:${pendingToken}`);
+    await redis.del(`2fa_attempts:${pendingToken}`);
 
     const users = await db
       .select()
@@ -524,7 +546,8 @@ export class AuthService {
     const codeHash = await hashBackupCode(code.toUpperCase());
     const idx = hashes.indexOf(codeHash);
 
-    if (idx < 0) throw new AuthError("TOTP_INVALID", "Invalid backup code.");
+    if (idx < 0)
+      await failTwoFactorAttempt(pendingToken, "Invalid backup code.");
 
     const remaining = hashes.filter((_, i) => i !== idx);
     await db
@@ -533,6 +556,7 @@ export class AuthService {
       .where(eq(twoFactor.userId, userId));
 
     await redis.del(`2fa_pending:${pendingToken}`);
+    await redis.del(`2fa_attempts:${pendingToken}`);
 
     const users = await db
       .select()
