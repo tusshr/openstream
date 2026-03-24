@@ -37,6 +37,9 @@ ENV NODE_ENV=production
 
 USER nonroot:nonroot
 
+# The API runs with the default Snowflake WORKER_ID=0. Run the worker service
+# from this same image with a DISTINCT id (command ["./worker"], env
+# WORKER_ID=1) so the two processes can't mint colliding ids.
 CMD ["./api"]
 
 EXPOSE 8080
