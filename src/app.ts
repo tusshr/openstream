@@ -2,6 +2,7 @@ import { Elysia, t } from "elysia";
 
 import { buildValidationResponse } from "@/lib/validation";
 import { authMacro, authRoutes } from "@/modules/auth";
+import { AuthError } from "@/modules/auth/service";
 import { categoriesModule } from "@/modules/categories";
 import { coursesModule } from "@/modules/courses";
 import { health } from "@/modules/health";
@@ -13,11 +14,29 @@ import { requestLogger } from "@/plugins/logger";
 import { openapi } from "@/plugins/openapi";
 import { securityHeaders } from "@/plugins/security-headers";
 
+const AUTH_ERROR_STATUS: Record<string, number> = {
+  EMAIL_TAKEN: 409,
+  INVALID_CREDENTIALS: 401,
+  EMAIL_NOT_VERIFIED: 403,
+  INVALID_TOKEN: 400,
+  TOTP_INVALID: 400,
+  TOTP_SETUP_EXPIRED: 400,
+  TOO_MANY_ATTEMPTS: 429,
+  NOT_FOUND: 404,
+};
+
 export const app = new Elysia({
   serve: { maxRequestBodySize: 1 * 1024 * 1024 },
 })
   .use(requestLogger)
   .onError(({ code, error }) => {
+    if (error instanceof AuthError) {
+      return Response.json(
+        { error: { code: error.code, message: error.message } },
+        { status: AUTH_ERROR_STATUS[error.code] ?? 400 },
+      );
+    }
+
     switch (code) {
       case "NOT_FOUND":
         return Response.json(
