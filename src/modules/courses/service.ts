@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gt, lt, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, isNotNull, lt, or, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import {
@@ -43,7 +43,14 @@ export class CourseService {
     const limit = Math.min(params.limit ?? DEFAULT_LIMIT, 50);
     const cursor = params.cursor ? decodeCursor(params.cursor) : null;
 
-    const conditions = [eq(courses.status, "published")];
+    // Keyset pagination orders by publishedAt; a published course with no
+    // publishedAt can't be placed in that order, so exclude it (otherwise its
+    // NULL sorts FIRST under DESC and corrupts the cursor). publishedAt should
+    // be set whenever a course is published.
+    const conditions = [
+      eq(courses.status, "published"),
+      isNotNull(courses.publishedAt),
+    ];
 
     if (params.category) conditions.push(eq(categories.slug, params.category));
     if (params.level) conditions.push(eq(courses.level, params.level));
@@ -54,15 +61,18 @@ export class CourseService {
 
     if (cursor) {
       const cursorDate = cursor.p ? new Date(cursor.p) : null;
+      // ids are numeric Snowflakes stored as text, so compare them as bigint —
+      // a plain text comparison orders "10" before "9" and breaks the keyset.
+      const idAfter = sql`${courses.id}::bigint > ${cursor.id}::bigint`;
       if (cursorDate) {
         conditions.push(
           or(
             lt(courses.publishedAt, cursorDate),
-            and(eq(courses.publishedAt, cursorDate), gt(courses.id, cursor.id)),
+            and(eq(courses.publishedAt, cursorDate), idAfter),
           )!,
         );
       } else {
-        conditions.push(gt(courses.id, cursor.id));
+        conditions.push(idAfter);
       }
     }
 
@@ -85,7 +95,7 @@ export class CourseService {
       .from(courses)
       .leftJoin(categories, eq(courses.categoryId, categories.id))
       .where(and(...conditions))
-      .orderBy(desc(courses.publishedAt), asc(courses.id))
+      .orderBy(desc(courses.publishedAt), asc(sql`${courses.id}::bigint`))
       .limit(limit + 1);
 
     const hasMore = rows.length > limit;
