@@ -84,7 +84,10 @@ export const educatorProfiles = pgTable("educator_profiles", {
   linkedin: text("linkedin"),
   youtube: text("youtube"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at")
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => new Date()),
 });
 
 export const categories = pgTable("categories", {
@@ -124,9 +127,10 @@ export const courses = pgTable(
     averageRating: numeric("average_rating", { precision: 4, scale: 2 }),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     publishedAt: timestamp("published_at"),
-    updatedAt: timestamp("updated_at").notNull().defaultNow(),
-    // title (A) + description (B). coalesce guards nullable description.
-    // Postgres maintains this automatically on every INSERT/UPDATE.
+    updatedAt: timestamp("updated_at")
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
     search: tsvector("search").generatedAlwaysAs(
       (): SQL =>
         sql`setweight(to_tsvector('english', ${courses.title}), 'A') || setweight(to_tsvector('english', coalesce(${courses.description}, '')), 'B')`,
@@ -136,7 +140,6 @@ export const courses = pgTable(
     index("courses_educator_id_idx").on(t.educatorId),
     index("courses_category_id_idx").on(t.categoryId),
     index("courses_status_idx").on(t.status),
-    index("courses_slug_idx").on(t.slug),
     index("courses_published_at_idx").on(t.publishedAt),
     index("courses_search_idx").using("gin", t.search),
   ],
@@ -168,7 +171,10 @@ export const chapters = pgTable(
     title: text("title").notNull(),
     position: smallint("position").notNull().default(0),
     createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at")
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
   },
   (t) => [
     index("chapters_course_id_idx").on(t.courseId),
@@ -183,7 +189,6 @@ export const lessons = pgTable(
     chapterId: text("chapter_id")
       .notNull()
       .references(() => chapters.id, { onDelete: "cascade" }),
-    // Denormalized from chapter for direct per-course lesson queries
     courseId: text("course_id")
       .notNull()
       .references(() => courses.id, { onDelete: "cascade" }),
@@ -195,7 +200,10 @@ export const lessons = pgTable(
     durationSeconds: integer("duration_seconds"),
     content: text("content"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at")
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
   },
   (t) => [
     index("lessons_chapter_id_idx").on(t.chapterId),
@@ -257,11 +265,16 @@ export const lessonProgress = pgTable(
       .references(() => courses.id, { onDelete: "cascade" }),
     completedAt: timestamp("completed_at"),
     watchedSeconds: integer("watched_seconds").notNull().default(0),
-    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at")
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
   },
   (t) => [
     uniqueIndex("lesson_progress_user_lesson_idx").on(t.userId, t.lessonId),
     index("lesson_progress_user_course_idx").on(t.userId, t.courseId),
+    index("lesson_progress_lesson_id_idx").on(t.lessonId),
+    index("lesson_progress_course_id_idx").on(t.courseId),
   ],
 );
 
@@ -278,7 +291,10 @@ export const courseReviews = pgTable(
     rating: smallint("rating").notNull(),
     body: text("body"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at")
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
   },
   (t) => [
     uniqueIndex("course_reviews_user_course_idx").on(t.userId, t.courseId),
@@ -304,7 +320,8 @@ export const certificates = pgTable(
   },
   (t) => [
     uniqueIndex("certificates_user_course_idx").on(t.userId, t.courseId),
-    index("certificates_verification_code_idx").on(t.verificationCode),
+    index("certificates_course_id_idx").on(t.courseId),
+    index("certificates_enrollment_id_idx").on(t.enrollmentId),
   ],
 );
 
@@ -324,7 +341,10 @@ export const orders = pgTable(
     paymentReference: text("payment_reference"),
     metadata: jsonb("metadata"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at")
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
   },
   (t) => [
     index("orders_user_id_idx").on(t.userId),
@@ -343,7 +363,6 @@ export const orderItems = pgTable(
     courseId: text("course_id")
       .notNull()
       .references(() => courses.id),
-    // Nullable: set after enrollment is created, used for refund → revoke path
     enrollmentId: text("enrollment_id").references(() => enrollments.id, {
       onDelete: "set null",
     }),
@@ -352,5 +371,6 @@ export const orderItems = pgTable(
   (t) => [
     index("order_items_order_id_idx").on(t.orderId),
     index("order_items_course_id_idx").on(t.courseId),
+    index("order_items_enrollment_id_idx").on(t.enrollmentId),
   ],
 );
