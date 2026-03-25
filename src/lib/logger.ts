@@ -2,16 +2,10 @@ import pino, { type Logger, type LoggerOptions } from "pino";
 
 import { env } from "@/env";
 
-const LEVELS = ["fatal", "error", "warn", "info", "debug", "trace"] as const;
-type Level = (typeof LEVELS)[number];
+type Level = "fatal" | "error" | "warn" | "info" | "debug" | "trace";
 
 function resolveLevel(): Level | "silent" {
-  const fromEnv = process.env.LOG_LEVEL?.toLowerCase();
-  if (fromEnv && (LEVELS as readonly string[]).includes(fromEnv)) {
-    return fromEnv as Level;
-  }
-  if (fromEnv === "silent") return "silent";
-
+  if (env.LOG_LEVEL) return env.LOG_LEVEL;
   if (env.NODE_ENV === "test") return "silent";
   if (env.NODE_ENV === "production") return "info";
   return "debug";
@@ -41,7 +35,7 @@ const baseOptions: LoggerOptions = {
   },
   timestamp: pino.stdTimeFunctions.isoTime,
   base: {
-    service: process.env.SERVICE_NAME ?? "openstream-api",
+    service: env.SERVICE_NAME ?? "openstream-api",
     env: env.NODE_ENV,
   },
 };
