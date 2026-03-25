@@ -43,10 +43,6 @@ export class CourseService {
     const limit = Math.min(params.limit ?? DEFAULT_LIMIT, 50);
     const cursor = params.cursor ? decodeCursor(params.cursor) : null;
 
-    // Keyset pagination orders by publishedAt; a published course with no
-    // publishedAt can't be placed in that order, so exclude it (otherwise its
-    // NULL sorts FIRST under DESC and corrupts the cursor). publishedAt should
-    // be set whenever a course is published.
     const conditions = [
       eq(courses.status, "published"),
       isNotNull(courses.publishedAt),
@@ -61,8 +57,6 @@ export class CourseService {
 
     if (cursor) {
       const cursorDate = cursor.p ? new Date(cursor.p) : null;
-      // ids are numeric Snowflakes stored as text, so compare them as bigint —
-      // a plain text comparison orders "10" before "9" and breaks the keyset.
       const idAfter = sql`${courses.id}::bigint > ${cursor.id}::bigint`;
       if (cursorDate) {
         conditions.push(
@@ -152,28 +146,29 @@ export class CourseService {
 
     if (!row) return null;
 
-    const chapterRows = await db
-      .select({
-        chapterId: chapters.id,
-        chapterTitle: chapters.title,
-        chapterPosition: chapters.position,
-        lessonId: lessons.id,
-        lessonTitle: lessons.title,
-        lessonType: lessons.type,
-        lessonPosition: lessons.position,
-        lessonIsPreview: lessons.isPreview,
-        lessonDuration: lessons.durationSeconds,
-      })
-      .from(chapters)
-      .leftJoin(lessons, eq(lessons.chapterId, chapters.id))
-      .where(eq(chapters.courseId, row.id))
-      .orderBy(asc(chapters.position), asc(lessons.position));
-
-    const tagRows = await db
-      .select({ id: tags.id, name: tags.name, slug: tags.slug })
-      .from(courseTags)
-      .innerJoin(tags, eq(courseTags.tagId, tags.id))
-      .where(eq(courseTags.courseId, row.id));
+    const [chapterRows, tagRows] = await Promise.all([
+      db
+        .select({
+          chapterId: chapters.id,
+          chapterTitle: chapters.title,
+          chapterPosition: chapters.position,
+          lessonId: lessons.id,
+          lessonTitle: lessons.title,
+          lessonType: lessons.type,
+          lessonPosition: lessons.position,
+          lessonIsPreview: lessons.isPreview,
+          lessonDuration: lessons.durationSeconds,
+        })
+        .from(chapters)
+        .leftJoin(lessons, eq(lessons.chapterId, chapters.id))
+        .where(eq(chapters.courseId, row.id))
+        .orderBy(asc(chapters.position), asc(lessons.position)),
+      db
+        .select({ id: tags.id, name: tags.name, slug: tags.slug })
+        .from(courseTags)
+        .innerJoin(tags, eq(courseTags.tagId, tags.id))
+        .where(eq(courseTags.courseId, row.id)),
+    ]);
 
     const chaptersMap = new Map<
       string,
