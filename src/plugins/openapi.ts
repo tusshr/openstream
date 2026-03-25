@@ -135,7 +135,9 @@ export const openapi = new Elysia({ name: "openapi-docs" })
     const session = token ? await getSession(token).catch(() => null) : null;
 
     if (!session || session.user.role !== "admin") {
-      return status(404, { error: "Not Found" });
+      return status(404, {
+        error: { code: "NOT_FOUND", message: "Not found" },
+      });
     }
   })
   .use(docsPlugin);
