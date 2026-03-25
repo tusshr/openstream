@@ -12,7 +12,7 @@ export type SessionWithUser = {
   user: typeof user.$inferSelect;
 };
 
-const SESSION_TTL_SEC = 7 * 24 * 60 * 60;
+export const SESSION_TTL_SEC = 7 * 24 * 60 * 60;
 const CACHE_TTL_SEC = 5 * 60;
 
 function cacheKey(token: string): string {
@@ -85,6 +85,19 @@ export async function deleteUserSessions(userId: string): Promise<void> {
     .delete(session)
     .where(eq(session.userId, userId))
     .returning({ token: session.token });
+
+  if (rows.length > 0) {
+    await Promise.all(rows.map((r) => redis.del(cacheKey(r.token))));
+  }
+}
+
+export async function invalidateUserSessionCache(
+  userId: string,
+): Promise<void> {
+  const rows = await db
+    .select({ token: session.token })
+    .from(session)
+    .where(eq(session.userId, userId));
 
   if (rows.length > 0) {
     await Promise.all(rows.map((r) => redis.del(cacheKey(r.token))));

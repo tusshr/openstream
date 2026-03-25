@@ -1,7 +1,7 @@
 import { Elysia, status } from "elysia";
 
 import { env } from "@/env";
-import { getSession } from "@/lib/session";
+import { getSession, SESSION_TTL_SEC } from "@/lib/session";
 import { rateLimit } from "@/plugins/rate-limit";
 
 import {
@@ -18,7 +18,6 @@ import {
 import { AuthError, authService } from "./service";
 
 const SESSION_COOKIE = "session_token";
-const SESSION_TTL_SEC = 7 * 24 * 60 * 60;
 const IS_PROD = env.NODE_ENV === "production";
 
 const AUTH_ERROR_STATUS: Record<string, number> = {

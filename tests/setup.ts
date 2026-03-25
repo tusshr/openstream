@@ -46,8 +46,20 @@ mock.module("@/lib/redis", () => ({
 
       if (upper === "PING") return "PONG";
       if (upper === "SET" && first !== undefined && second !== undefined) {
+        const opts = args.slice(2).map((a) => String(a).toUpperCase());
+        if (opts.includes("NX")) {
+          purgeIfExpired(first);
+          if (store.has(first)) return null; // NX: key exists → no-op
+        }
         store.set(first, second);
         ttls.delete(first);
+        const exIdx = opts.indexOf("EX");
+        if (exIdx >= 0 && opts[exIdx + 1] !== undefined) {
+          const seconds = Number(opts[exIdx + 1]);
+          if (Number.isFinite(seconds)) {
+            ttls.set(first, Date.now() + seconds * 1_000);
+          }
+        }
         return "OK";
       }
       if (upper === "GET" && first !== undefined) {

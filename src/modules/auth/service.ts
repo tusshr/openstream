@@ -8,7 +8,12 @@ import { generateId } from "@/lib/id";
 import { logger } from "@/lib/logger";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { redis } from "@/lib/redis";
-import { createSession, deleteUserSessions } from "@/lib/session";
+import {
+  createSession,
+  deleteSession,
+  deleteUserSessions,
+  invalidateUserSessionCache,
+} from "@/lib/session";
 import { generateToken } from "@/lib/token";
 import { generateTotpSecret, totpUri, verifyTotp } from "@/lib/totp";
 import { enqueueEmail } from "@/modules/jobs";
@@ -246,8 +251,13 @@ export class AuthService {
           .limit(1)
       : [];
 
-    const hash = credentials[0]?.password ?? dummyHash;
-    const valid = await verifyPassword(password, hash ?? dummyHash);
+    const stored = credentials[0]?.password || dummyHash;
+    let valid = false;
+    try {
+      valid = await verifyPassword(password, stored);
+    } catch {
+      valid = false;
+    }
 
     if (!found || !valid) {
       throw new AuthError("INVALID_CREDENTIALS", "Invalid email or password.");
@@ -291,7 +301,7 @@ export class AuthService {
   }
 
   async signOut(sessionToken: string, userId: string): Promise<void> {
-    await import("@/lib/session").then((m) => m.deleteSession(sessionToken));
+    await deleteSession(sessionToken);
     await audit({
       actorId: userId,
       action: "user.sign-out",
@@ -306,6 +316,7 @@ export class AuthService {
       .update(user)
       .set({ emailVerified: true, updatedAt: new Date() })
       .where(eq(user.id, payload.userId));
+    await invalidateUserSessionCache(payload.userId);
   }
 
   async resendVerification(email: string): Promise<void> {
@@ -421,6 +432,7 @@ export class AuthService {
       .update(user)
       .set({ email: payload.newEmail, updatedAt: new Date() })
       .where(eq(user.id, payload.userId));
+    await invalidateUserSessionCache(payload.userId);
   }
 
   async setupTotp(
@@ -495,6 +507,20 @@ export class AuthService {
     if (!valid)
       await failTwoFactorAttempt(pendingToken, "Invalid authenticator code.");
 
+    const fresh = await redis.send("SET", [
+      `2fa_used:${userId}:${code}`,
+      "1",
+      "EX",
+      "90",
+      "NX",
+    ]);
+    if (fresh === null) {
+      throw new AuthError(
+        "TOTP_INVALID",
+        "That code was already used. Wait for the next one.",
+      );
+    }
+
     await redis.del(`2fa_pending:${pendingToken}`);
     await redis.del(`2fa_attempts:${pendingToken}`);
 
@@ -568,6 +594,16 @@ export class AuthService {
     if (!found) throw new AuthError("NOT_FOUND", "User not found.");
 
     const token = await createSession(found.id, request);
+
+    await audit({
+      actorId: found.id,
+      action: "user.sign-in",
+      resourceType: "session",
+      resourceId: token,
+      request,
+      metadata: { method: "backup-code" },
+    });
+
     return { user: found, token };
   }
 
