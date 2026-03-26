@@ -83,8 +83,10 @@ export const educatorProfiles = pgTable("educator_profiles", {
   twitter: text("twitter"),
   linkedin: text("linkedin"),
   youtube: text("youtube"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at")
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .defaultNow()
     .$onUpdate(() => new Date()),
@@ -95,7 +97,9 @@ export const categories = pgTable("categories", {
   name: text("name").notNull().unique(),
   slug: text("slug").notNull().unique(),
   description: text("description"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });
 
 export const tags = pgTable("tags", {
@@ -125,9 +129,11 @@ export const courses = pgTable(
     enrolledCount: integer("enrolled_count").notNull().default(0),
     reviewCount: integer("review_count").notNull().default(0),
     averageRating: numeric("average_rating", { precision: 4, scale: 2 }),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    publishedAt: timestamp("published_at"),
-    updatedAt: timestamp("updated_at")
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
       .defaultNow()
       .$onUpdate(() => new Date()),
@@ -170,8 +176,10 @@ export const chapters = pgTable(
       .references(() => courses.id, { onDelete: "cascade" }),
     title: text("title").notNull(),
     position: smallint("position").notNull().default(0),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at")
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
       .defaultNow()
       .$onUpdate(() => new Date()),
@@ -199,8 +207,10 @@ export const lessons = pgTable(
     videoKey: text("video_key"),
     durationSeconds: integer("duration_seconds"),
     content: text("content"),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at")
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
       .defaultNow()
       .$onUpdate(() => new Date()),
@@ -223,7 +233,9 @@ export const lessonAttachments = pgTable(
     fileKey: text("file_key").notNull(),
     fileSize: bigint("file_size", { mode: "bigint" }),
     mimeType: text("mime_type"),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
   (t) => [index("lesson_attachments_lesson_id_idx").on(t.lessonId)],
 );
@@ -239,8 +251,10 @@ export const enrollments = pgTable(
       .notNull()
       .references(() => courses.id, { onDelete: "cascade" }),
     status: enrollmentStatusEnum("status").notNull().default("active"),
-    enrolledAt: timestamp("enrolled_at").notNull().defaultNow(),
-    completedAt: timestamp("completed_at"),
+    enrolledAt: timestamp("enrolled_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
   },
   (t) => [
     uniqueIndex("enrollments_user_course_idx").on(t.userId, t.courseId),
@@ -259,13 +273,12 @@ export const lessonProgress = pgTable(
     lessonId: text("lesson_id")
       .notNull()
       .references(() => lessons.id, { onDelete: "cascade" }),
-    // Denormalized from lesson for efficient per-course progress queries
     courseId: text("course_id")
       .notNull()
       .references(() => courses.id, { onDelete: "cascade" }),
-    completedAt: timestamp("completed_at"),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
     watchedSeconds: integer("watched_seconds").notNull().default(0),
-    updatedAt: timestamp("updated_at")
+    updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
       .defaultNow()
       .$onUpdate(() => new Date()),
@@ -290,8 +303,10 @@ export const courseReviews = pgTable(
       .references(() => courses.id, { onDelete: "cascade" }),
     rating: smallint("rating").notNull(),
     body: text("body"),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at")
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
       .defaultNow()
       .$onUpdate(() => new Date()),
@@ -316,7 +331,9 @@ export const certificates = pgTable(
       .notNull()
       .references(() => enrollments.id, { onDelete: "cascade" }),
     verificationCode: text("verification_code").notNull().unique(),
-    issuedAt: timestamp("issued_at").notNull().defaultNow(),
+    issuedAt: timestamp("issued_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
   (t) => [
     uniqueIndex("certificates_user_course_idx").on(t.userId, t.courseId),
@@ -340,8 +357,10 @@ export const orders = pgTable(
     paymentProvider: text("payment_provider"),
     paymentReference: text("payment_reference"),
     metadata: jsonb("metadata"),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at")
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
       .defaultNow()
       .$onUpdate(() => new Date()),
