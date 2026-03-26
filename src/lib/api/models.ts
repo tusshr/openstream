@@ -27,15 +27,35 @@ export const FieldErrorSchema = t.Object({
   rejectedValue: t.Optional(t.Unknown()),
 });
 
-export const ApiErrorSchema = t.Object({
-  code: t.String({ minLength: 1 }),
-  message: t.String({ minLength: 1 }),
-  details: t.Optional(t.Array(FieldErrorSchema)),
-});
-
-export const ApiErrorResponseSchema = t.Object({
-  error: ApiErrorSchema,
-});
+export const ProblemDetailsSchema = t.Object(
+  {
+    type: t.String({ description: "Problem type URI. Always 'about:blank'." }),
+    title: t.String({
+      description: "Short, human-readable summary (the HTTP status phrase).",
+    }),
+    status: t.Integer({
+      description: "HTTP status code, repeated in the body.",
+    }),
+    detail: t.String({
+      description: "Human-readable explanation specific to this occurrence.",
+    }),
+    code: t.String({
+      minLength: 1,
+      description: "Machine-readable error code (extension member).",
+    }),
+    instance: t.Optional(
+      t.String({
+        description: "Path of the failing request (extension member).",
+      }),
+    ),
+    errors: t.Optional(
+      t.Array(FieldErrorSchema, {
+        description: "Field-level validation errors (extension member).",
+      }),
+    ),
+  },
+  { description: "RFC 9457 problem details" },
+);
 
 export const responseOf = <T extends TSchema>(dataSchema: T) =>
   t.Object({
@@ -54,8 +74,7 @@ export const collectionOf = <T extends TSchema>(itemSchema: T) =>
 export type PaginationMeta = typeof PaginationMetaSchema.static;
 export type PaginationLinks = typeof PaginationLinksSchema.static;
 export type FieldError = typeof FieldErrorSchema.static;
-export type ApiError = typeof ApiErrorSchema.static;
-export type ApiErrorResponse = typeof ApiErrorResponseSchema.static;
+export type ProblemDetails = typeof ProblemDetailsSchema.static;
 export type ApiResponse<T> = {
   data: T;
   meta?: PaginationMeta;
