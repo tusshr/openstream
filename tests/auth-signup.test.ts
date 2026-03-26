@@ -1,13 +1,12 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 
-import { account, auditLog, user, verification } from "@/db/schema";
+import { auditLog, user, verification } from "@/db/schema";
 
-// signUp must create the user and its credential account atomically with a
-// SINGLE id, so account.userId references the real user row. A regression here
-// (two different generateId() calls) silently breaks every sign-up: the account
-// FK points at a non-existent user, the row is orphaned, and — because email is
-// unique — the address is locked out of re-registration. These tests pin that
-// contract without needing a live Postgres.
+// signUp must persist the user with an argon2id-hashed password on the user row
+// (the separate credential `account` table was removed). It must normalize the
+// email, reference the real user id from the verification + audit rows, and
+// never fail the request just because the verification email couldn't enqueue.
+// These tests pin that contract without needing a live Postgres.
 
 type Insert = { table: unknown; values: Record<string, unknown> };
 type FakeDb = {
@@ -76,19 +75,15 @@ beforeEach(() => {
 });
 
 describe("authService.signUp", () => {
-  test("creates user and credential account sharing one id (C1 regression)", async () => {
+  test("creates a single user row with a hashed password", async () => {
     await authService.signUp("New.User@Example.com", "password123", "New User");
 
     const userInsert = insertFor(user);
-    const accountInsert = insertFor(account);
-
     expect(userInsert).toBeDefined();
-    expect(accountInsert).toBeDefined();
 
-    // The crux: the account's userId/accountId must equal the real user.id.
-    expect(accountInsert!.values.userId).toBe(userInsert!.values.id);
-    expect(accountInsert!.values.accountId).toBe(userInsert!.values.id);
-    expect(accountInsert!.values.providerId).toBe("credential");
+    // Password hash lives on the user row itself (no separate account table).
+    expect(typeof userInsert!.values.password).toBe("string");
+    expect(userInsert!.values.password).not.toBe("password123");
 
     // Email is normalized to lowercase on the user row.
     expect(userInsert!.values.email).toBe("new.user@example.com");
@@ -110,11 +105,6 @@ describe("authService.signUp", () => {
     expect(auditInsert!.values.resourceId).toBe(userId);
   });
 
-  test("wraps the user + account writes in a single transaction", async () => {
-    await authService.signUp("tx@b.com", "password123", "Tx User");
-    expect(state.txCalls).toBe(1);
-  });
-
   test("rejects a duplicate email without writing anything", async () => {
     state.existingUsers = [{ id: "existing-id" }];
 
@@ -123,19 +113,17 @@ describe("authService.signUp", () => {
     ).rejects.toMatchObject({ code: "EMAIL_TAKEN" });
 
     expect(state.inserts).toHaveLength(0);
-    expect(state.txCalls).toBe(0);
   });
 
   test("succeeds even if the verification email cannot be enqueued", async () => {
     state.enqueueShouldThrow = true;
 
-    // The account is already committed; a queue outage must not fail the request.
+    // The user is already committed; a queue outage must not fail the request.
     await expect(
       authService.signUp("queue@b.com", "password123", "Queue User"),
     ).resolves.toBeUndefined();
 
     expect(insertFor(user)).toBeDefined();
-    expect(insertFor(account)).toBeDefined();
     expect(state.enqueued).toHaveLength(0);
   });
 
