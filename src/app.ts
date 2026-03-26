@@ -1,5 +1,6 @@
 import { Elysia, t } from "elysia";
 
+import { HttpProblem, problem } from "@/lib/response";
 import { buildValidationResponse } from "@/lib/validation";
 import { authMacro, authRoutes } from "@/modules/auth";
 import { AuthError } from "@/modules/auth/service";
@@ -29,38 +30,55 @@ export const app = new Elysia({
   serve: { maxRequestBodySize: 1 * 1024 * 1024 },
 })
   .use(requestLogger)
-  .onError(({ code, error }) => {
+  .onError(({ code, error, request }) => {
+    const instance = new URL(request.url).pathname;
+
     if (error instanceof AuthError) {
-      return Response.json(
-        { error: { code: error.code, message: error.message } },
-        { status: AUTH_ERROR_STATUS[error.code] ?? 400 },
-      );
+      return problem({
+        status: AUTH_ERROR_STATUS[error.code] ?? 400,
+        code: error.code,
+        detail: error.message,
+        instance,
+      });
+    }
+
+    if (error instanceof HttpProblem) {
+      return problem({
+        status: error.status,
+        code: error.code,
+        detail: error.detail,
+        instance,
+        ...(error.errors ? { errors: error.errors } : {}),
+        ...(error.extensions ? { extensions: error.extensions } : {}),
+        ...(error.headers ? { headers: error.headers } : {}),
+      });
     }
 
     switch (code) {
       case "NOT_FOUND":
-        return Response.json(
-          { error: { code: "NOT_FOUND", message: "Not found" } },
-          { status: 404 },
-        );
+        return problem({
+          status: 404,
+          code: "NOT_FOUND",
+          detail: "Not found",
+          instance,
+        });
       case "VALIDATION":
-        return buildValidationResponse(error);
+        return buildValidationResponse(error, instance);
       case "PARSE":
-        return Response.json(
-          { error: { code: "PARSE_ERROR", message: "Invalid request body" } },
-          { status: 400 },
-        );
+        return problem({
+          status: 400,
+          code: "PARSE_ERROR",
+          detail: "Invalid request body",
+          instance,
+        });
     }
 
-    return Response.json(
-      {
-        error: {
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Internal server error",
-        },
-      },
-      { status: 500 },
-    );
+    return problem({
+      status: 500,
+      code: "INTERNAL_SERVER_ERROR",
+      detail: "Internal server error",
+      instance,
+    });
   })
   .use(securityHeaders)
   .use(cors)

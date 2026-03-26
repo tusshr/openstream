@@ -1,7 +1,8 @@
 import { openapi as openApiPlugin } from "@elysiajs/openapi";
-import { Elysia, status } from "elysia";
+import { Elysia } from "elysia";
 
 import { env } from "@/env";
+import { problem } from "@/lib/response";
 import { getSession } from "@/lib/session";
 
 const DOCS_PATH_PREFIXES = ["/openapi", "/scalar", "/api-1"] as const;
@@ -120,10 +121,6 @@ const docsPlugin = openApiPlugin({
   },
 });
 
-// In production we don't want anonymous reconnaissance of the API. The docs
-// are still served, but only to authenticated admins. Non-admins (including
-// anonymous callers) get 404, which is intentional: 403 would confirm the path
-// exists. In development, the wrapper is a no-op pass-through.
 export const openapi = new Elysia({ name: "openapi-docs" })
   .onRequest(async ({ request }) => {
     if (env.NODE_ENV !== "production") return;
@@ -135,8 +132,11 @@ export const openapi = new Elysia({ name: "openapi-docs" })
     const session = token ? await getSession(token).catch(() => null) : null;
 
     if (!session || session.user.role !== "admin") {
-      return status(404, {
-        error: { code: "NOT_FOUND", message: "Not found" },
+      return problem({
+        status: 404,
+        code: "NOT_FOUND",
+        detail: "Not found",
+        instance: url.pathname,
       });
     }
   })
