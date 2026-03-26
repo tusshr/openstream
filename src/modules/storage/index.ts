@@ -1,7 +1,7 @@
-import { Elysia, status } from "elysia";
+import { Elysia } from "elysia";
 
 import { audit } from "@/lib/audit";
-import { collectionOf, dataOf, ok } from "@/lib/response";
+import { collectionOf, dataOf, HttpProblem, ok } from "@/lib/response";
 import { authMacro } from "@/modules/auth";
 import { rateLimit, tooManyRequestsResponseSchema } from "@/plugins/rate-limit";
 
@@ -14,8 +14,6 @@ import {
   PresignedResponseSchema,
   PresignUploadBodySchema,
   UnsupportedMediaTypeResponseSchema,
-  type ForbiddenResponse,
-  type UnsupportedMediaTypeResponse,
 } from "./model";
 import { storageService, type ActingUser } from "./service";
 
@@ -43,11 +41,12 @@ export const storage = new Elysia({ prefix: "/storage", name: "storage" })
     ({ body, user }) => {
       const result = storageService.presignUpload(body, toActingUser(user));
       if (result.kind === "unsupported-media-type") {
-        const failure: UnsupportedMediaTypeResponse = {
-          error: {
-            code: "UNSUPPORTED_MEDIA_TYPE",
-            message: `contentType '${result.contentType}' is not allowed for purpose '${result.purpose}'.`,
-            details: [
+        throw new HttpProblem(
+          415,
+          "UNSUPPORTED_MEDIA_TYPE",
+          `contentType '${result.contentType}' is not allowed for purpose '${result.purpose}'.`,
+          {
+            errors: [
               {
                 field: "contentType",
                 rule: "allowedMimes",
@@ -56,8 +55,7 @@ export const storage = new Elysia({ prefix: "/storage", name: "storage" })
               },
             ],
           },
-        };
-        return status(415, failure);
+        );
       }
       return ok(result.data);
     },
@@ -91,10 +89,7 @@ export const storage = new Elysia({ prefix: "/storage", name: "storage" })
         toActingUser(user),
       );
       if (result.kind === "forbidden") {
-        const failure: ForbiddenResponse = {
-          error: { code: "FORBIDDEN", message: result.reason },
-        };
-        return status(403, failure);
+        throw new HttpProblem(403, "FORBIDDEN", result.reason);
       }
       return ok(result.data);
     },
@@ -167,10 +162,7 @@ export const storage = new Elysia({ prefix: "/storage", name: "storage" })
         toActingUser(user),
       );
       if (result.kind === "forbidden") {
-        const failure: ForbiddenResponse = {
-          error: { code: "FORBIDDEN", message: result.reason },
-        };
-        return status(403, failure);
+        throw new HttpProblem(403, "FORBIDDEN", result.reason);
       }
 
       await audit({

@@ -1,6 +1,13 @@
-import { Elysia, status, t } from "elysia";
+import { Elysia, t } from "elysia";
 
-import { collectionOf, dataOf, ok, okWithMeta } from "@/lib/response";
+import { ProblemDetailsSchema } from "@/lib/api/models";
+import {
+  collectionOf,
+  dataOf,
+  HttpProblem,
+  ok,
+  okWithMeta,
+} from "@/lib/response";
 
 import {
   CourseCardSchema,
@@ -40,19 +47,14 @@ export const coursesModule = new Elysia({ name: "courses", prefix: "/courses" })
     "/:slug",
     async ({ params }) => {
       const course = await courseService.getBySlug(params.slug);
-      if (!course)
-        return status(404, {
-          error: { code: "NOT_FOUND", message: "Course not found." },
-        });
+      if (!course) throw new HttpProblem(404, "NOT_FOUND", "Course not found.");
       return ok(course);
     },
     {
       params: t.Object({ slug: t.String() }),
       response: {
         200: "courses.detail",
-        404: t.Object({
-          error: t.Object({ code: t.String(), message: t.String() }),
-        }),
+        404: ProblemDetailsSchema,
       },
       detail: {
         summary: "Get course",

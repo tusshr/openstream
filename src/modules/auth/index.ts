@@ -1,6 +1,7 @@
 import { Elysia, status } from "elysia";
 
 import { env } from "@/env";
+import { HttpProblem, problem } from "@/lib/response";
 import { getSession, SESSION_TTL_SEC } from "@/lib/session";
 import { rateLimit } from "@/plugins/rate-limit";
 
@@ -66,17 +67,14 @@ export const authMacro = new Elysia({ name: "auth-macro" }).macro({
     async resolve({ cookie }) {
       const token = cookie[SESSION_COOKIE]?.value as string | undefined;
       if (!token)
-        return status(401, {
-          error: { code: "UNAUTHORIZED", message: "Authentication required." },
-        });
+        throw new HttpProblem(401, "UNAUTHORIZED", "Authentication required.");
       const result = await getSession(token);
       if (!result)
-        return status(401, {
-          error: {
-            code: "UNAUTHORIZED",
-            message: "Session expired or invalid.",
-          },
-        });
+        throw new HttpProblem(
+          401,
+          "UNAUTHORIZED",
+          "Session expired or invalid.",
+        );
       return {
         user: result.user,
         session: result.session,
@@ -89,15 +87,18 @@ const CSRF = [{ csrfHeader: [] }];
 const SESSION_CSRF = [{ sessionCookie: [], csrfHeader: [] }];
 
 export const authRoutes = new Elysia({ name: "auth", prefix: "/api/auth" })
-  .onError(({ error, set }) => {
+  .onError(({ error, request }) => {
     if (error instanceof AuthError) {
-      set.status = AUTH_ERROR_STATUS[error.code] ?? 400;
-      return { error: { code: error.code, message: error.message } };
+      return problem({
+        status: AUTH_ERROR_STATUS[error.code] ?? 400,
+        code: error.code,
+        detail: error.message,
+        instance: new URL(request.url).pathname,
+      });
     }
   })
   .guard({ detail: { tags: ["Auth"] } }, (app) =>
     app
-      // -- Account --
       .post(
         "/sign-up",
         async ({ body }) => {
@@ -161,19 +162,14 @@ export const authRoutes = new Elysia({ name: "auth", prefix: "/api/auth" })
       .get("/session", async ({ cookie }) => {
         const token = cookie[SESSION_COOKIE]?.value as string | undefined;
         if (!token)
-          return status(401, {
-            error: { code: "UNAUTHORIZED", message: "Not authenticated." },
-          });
+          throw new HttpProblem(401, "UNAUTHORIZED", "Not authenticated.");
         const result = await getSession(token);
         if (!result)
-          return status(401, {
-            error: { code: "UNAUTHORIZED", message: "Session expired." },
-          });
+          throw new HttpProblem(401, "UNAUTHORIZED", "Session expired.");
         return {
           data: { user: serializeUser(result.user), session: result.session },
         };
       })
-      // -- Email verification --
       .post(
         "/verify-email",
         async ({ body }) => {
@@ -206,7 +202,6 @@ export const authRoutes = new Elysia({ name: "auth", prefix: "/api/auth" })
           detail: { summary: "Resend verification email", security: CSRF },
         },
       )
-      // -- Password --
       .post(
         "/forgot-password",
         async ({ body }) => {
@@ -250,7 +245,6 @@ export const authRoutes = new Elysia({ name: "auth", prefix: "/api/auth" })
           detail: { summary: "Confirm email change", security: CSRF },
         },
       )
-      // -- 2FA verify (no session yet) --
       .post(
         "/2fa/verify",
         async ({ body, cookie, request }) => {

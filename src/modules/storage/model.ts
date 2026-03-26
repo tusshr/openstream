@@ -1,6 +1,6 @@
 import { t, validationDetail } from "elysia";
 
-import { FieldErrorSchema } from "@/lib/api/models";
+import { ProblemDetailsSchema } from "@/lib/api/models";
 
 export const PRESIGN_TTL_SECONDS = 300;
 
@@ -99,20 +99,8 @@ export const FileItemSchema = t.Object({
   lastModified: t.String({ format: "date-time" }),
 });
 
-export const ForbiddenResponseSchema = t.Object({
-  error: t.Object({
-    code: t.Literal("FORBIDDEN"),
-    message: t.String({ minLength: 1 }),
-  }),
-});
-
-export const UnsupportedMediaTypeResponseSchema = t.Object({
-  error: t.Object({
-    code: t.Literal("UNSUPPORTED_MEDIA_TYPE"),
-    message: t.String({ minLength: 1 }),
-    details: t.Optional(t.Array(FieldErrorSchema)),
-  }),
-});
+export const ForbiddenResponseSchema = ProblemDetailsSchema;
+export const UnsupportedMediaTypeResponseSchema = ProblemDetailsSchema;
 
 export type ListFilesQuery = typeof ListFilesQuerySchema.static;
 export type FileItem = typeof FileItemSchema.static;
