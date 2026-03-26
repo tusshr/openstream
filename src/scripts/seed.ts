@@ -116,7 +116,7 @@ async function main() {
   await reset(db, schema);
 
   // -------------------------------------------------------------------------
-  // 1. Users + accounts  (manual — passwords must be argon2id-hashed)
+  // 1. Users  (manual — passwords must be argon2id-hashed)
   // -------------------------------------------------------------------------
 
   const adminId = generateId();
@@ -134,6 +134,7 @@ async function main() {
       email: "admin@openstream.dev",
       role: "admin",
       emailVerified: true,
+      password: hash,
       createdAt: NOW,
       updatedAt: NOW,
     },
@@ -143,6 +144,7 @@ async function main() {
       email: "sarah@openstream.dev",
       role: "user",
       emailVerified: true,
+      password: hash,
       createdAt: NOW,
       updatedAt: NOW,
     },
@@ -152,6 +154,7 @@ async function main() {
       email: "marcus@openstream.dev",
       role: "user",
       emailVerified: true,
+      password: hash,
       createdAt: NOW,
       updatedAt: NOW,
     },
@@ -161,22 +164,11 @@ async function main() {
       email: `student${i + 1}@openstream.dev`,
       role: "user" as const,
       emailVerified: true,
-      createdAt: NOW,
-      updatedAt: NOW,
-    })),
-  ]);
-
-  await db.insert(schema.account).values(
-    allUserIds.map((userId) => ({
-      id: generateId(),
-      accountId: userId,
-      providerId: "credential",
-      userId,
       password: hash,
       createdAt: NOW,
       updatedAt: NOW,
     })),
-  );
+  ]);
 
   // -------------------------------------------------------------------------
   // 2. Educator profiles  (manual — refs educator user IDs)
