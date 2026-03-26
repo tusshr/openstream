@@ -15,6 +15,20 @@
       "when": 1780557846189,
       "tag": "0001_dusty_magik",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1782513312670,
+      "tag": "0002_mean_layla_miller",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1782514126607,
+      "tag": "0003_nebulous_pepper_potts",
+      "breakpoints": true
     }
   ]
 }
