@@ -4,7 +4,7 @@ import { eq, sql } from "drizzle-orm";
 mock.module("@/modules/jobs", () => ({ enqueueEmail: async () => {} }));
 
 const { db } = await import("@/db");
-const { user, account } = await import("@/db/schema");
+const { user } = await import("@/db/schema");
 const { postJson } = await import("./helpers/request");
 
 let dbUp = false;
@@ -40,13 +40,8 @@ describe.skipIf(!dbUp)("auth sign-up → sign-in (real DB)", () => {
       .where(eq(user.email, EMAIL))
       .limit(1);
     expect(users).toHaveLength(1);
-
-    const accounts = await db
-      .select()
-      .from(account)
-      .where(eq(account.userId, users[0]!.id))
-      .limit(1);
-    expect(accounts).toHaveLength(1);
+    // Password hash now lives on the user row (credential account table removed).
+    expect(users[0]!.password).toBeTruthy();
 
     await db
       .update(user)
