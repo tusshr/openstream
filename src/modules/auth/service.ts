@@ -1,7 +1,7 @@
 import { and, eq, gt } from "drizzle-orm";
 
 import { db } from "@/db";
-import { account, twoFactor, user, verification } from "@/db/schema";
+import { twoFactor, user, verification } from "@/db/schema";
 import { env } from "@/env";
 import { audit } from "@/lib/audit";
 import { generateId } from "@/lib/id";
@@ -174,26 +174,15 @@ export class AuthService {
     const now = new Date();
     const userId = generateId();
 
-    await db.transaction(async (tx) => {
-      await tx.insert(user).values({
-        id: userId,
-        name,
-        email: email.toLowerCase(),
-        emailVerified: false,
-        role: "user",
-        createdAt: now,
-        updatedAt: now,
-      });
-
-      await tx.insert(account).values({
-        id: generateId(),
-        accountId: userId,
-        providerId: "credential",
-        userId,
-        password: hash,
-        createdAt: now,
-        updatedAt: now,
-      });
+    await db.insert(user).values({
+      id: userId,
+      name,
+      email: email.toLowerCase(),
+      emailVerified: false,
+      role: "user",
+      password: hash,
+      createdAt: now,
+      updatedAt: now,
     });
 
     const token = await createVerificationToken(
@@ -238,20 +227,8 @@ export class AuthService {
 
     const dummyHash =
       "$argon2id$v=19$m=65536,t=2,p=1$AAAAAAAAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
-    const credentials = found
-      ? await db
-          .select({ password: account.password })
-          .from(account)
-          .where(
-            and(
-              eq(account.userId, found.id),
-              eq(account.providerId, "credential"),
-            ),
-          )
-          .limit(1)
-      : [];
-
-    const stored = credentials[0]?.password || dummyHash;
+    // Always verify against *something* (dummy when no user) for constant time.
+    const stored = found?.password || dummyHash;
     let valid = false;
     try {
       valid = await verifyPassword(password, stored);
@@ -370,14 +347,9 @@ export class AuthService {
     const hash = await hashPassword(newPassword);
 
     await db
-      .update(account)
+      .update(user)
       .set({ password: hash, updatedAt: new Date() })
-      .where(
-        and(
-          eq(account.userId, payload.userId),
-          eq(account.providerId, "credential"),
-        ),
-      );
+      .where(eq(user.id, payload.userId));
 
     await deleteUserSessions(payload.userId);
 
