@@ -2,6 +2,7 @@ import {
   boolean,
   index,
   jsonb,
+  pgEnum,
   pgTable,
   text,
   timestamp,
@@ -10,10 +11,16 @@ import {
 
 import { generateId } from "@/lib/id";
 
+export const userRoleEnum = pgEnum("user_role", [
+  "student",
+  "educator",
+  "admin",
+]);
+
 export const user = pgTable("user", {
   id: text("id").primaryKey().$defaultFn(generateId),
   name: text("name").notNull(),
-  role: text("role").notNull().default("user"),
+  role: userRoleEnum("role").notNull().default("student"),
   email: text("email").notNull().unique(),
   emailVerified: boolean("email_verified").notNull(),
   image: text("image"),

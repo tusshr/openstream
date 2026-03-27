@@ -13,7 +13,11 @@ export const UserResponseSchema = t.Object({
 export type UserResponse = typeof UserResponseSchema.static;
 
 export const UpdateRoleBodySchema = t.Object({
-  role: t.Union([t.Literal("user"), t.Literal("educator"), t.Literal("admin")]),
+  role: t.Union([
+    t.Literal("student"),
+    t.Literal("educator"),
+    t.Literal("admin"),
+  ]),
 });
 
 export type UpdateRoleBody = typeof UpdateRoleBodySchema.static;

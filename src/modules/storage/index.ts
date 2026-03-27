@@ -20,7 +20,7 @@ import { storageService, type ActingUser } from "./service";
 type AuthedUser = { id: string; role?: string | null | undefined };
 
 function toActingUser(user: AuthedUser): ActingUser {
-  return { id: user.id, role: user.role ?? "user" };
+  return { id: user.id, role: user.role ?? "student" };
 }
 
 export const storage = new Elysia({ prefix: "/storage", name: "storage" })

@@ -179,7 +179,7 @@ export class AuthService {
       name,
       email: email.toLowerCase(),
       emailVerified: false,
-      role: "user",
+      role: "student",
       password: hash,
       createdAt: now,
       updatedAt: now,

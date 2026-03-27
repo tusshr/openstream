@@ -21,7 +21,7 @@ export const users = new Elysia({ name: "users" })
         name: user.name,
         email: user.email,
         image: user.image ?? null,
-        role: user.role ?? "user",
+        role: user.role ?? "student",
         emailVerified: user.emailVerified,
         createdAt: user.createdAt,
       }),
