@@ -4,34 +4,65 @@ import {
   type MongoAbility,
 } from "@casl/ability";
 
-export type Action = "manage" | "create" | "read" | "update" | "delete";
-export type Subject = "Course" | "User" | "Enrollment" | "Order" | "all";
+import { courses, enrollments, orders, user } from "@/db/schema";
 
-export type AppAbility = MongoAbility<[Action, Subject]>;
+type CourseSubject = Pick<typeof courses.$inferSelect, "educatorId"> | "Course";
+type EnrollmentSubject =
+  | Pick<typeof enrollments.$inferSelect, "userId">
+  | "Enrollment";
+type OrderSubject = Pick<typeof orders.$inferSelect, "userId"> | "Order";
+type UserSubject = Pick<typeof user.$inferSelect, "role"> | "User";
 
-export type Permission = readonly [Action, Subject];
+type Abilities =
+  | ["manage", "all"]
+  | ["create" | "read" | "update" | "delete", CourseSubject]
+  | ["create" | "read", EnrollmentSubject]
+  | ["create" | "read", OrderSubject]
+  | ["read" | "update", UserSubject];
 
-export function buildAbility(user: { id: string; role: string }): AppAbility {
+export type AppAbility = MongoAbility<Abilities>;
+
+export type Permission =
+  | ["create" | "read" | "update" | "delete", "Course"]
+  | ["create" | "read", "Enrollment"]
+  | ["create" | "read", "Order"]
+  | ["read" | "update", "User"]
+  | ["manage", "all"];
+
+export function buildAbility(user: {
+  id: string;
+  role: string;
+  educatorProfileId?: string | null;
+}): AppAbility {
   const { can, build } = new AbilityBuilder<AppAbility>(createMongoAbility);
+
+  can("read", "Course");
 
   switch (user.role) {
     case "admin":
       can("manage", "all");
       break;
+
     case "educator":
-      can("read", "Course");
       can("create", "Course");
-      can("update", "Course");
-      can("delete", "Course");
-      can("read", "Enrollment");
-      can("read", "Order");
+      if (user.educatorProfileId) {
+        can("update", "Course", ["status"], {
+          educatorId: user.educatorProfileId,
+        });
+        can("delete", "Course", {
+          educatorId: user.educatorProfileId,
+        });
+      }
       break;
-    default:
-      can("read", "Course");
+
+    case "student":
       can("create", "Enrollment");
-      can("read", "Enrollment");
+      can("read", "Enrollment", { userId: user.id });
       can("create", "Order");
-      can("read", "Order");
+      can("read", "Order", { userId: user.id });
+      break;
+
+    default:
       break;
   }
 

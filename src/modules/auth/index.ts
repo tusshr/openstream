@@ -44,7 +44,7 @@ function serializeUser(u: {
     id: u.id,
     name: u.name,
     email: u.email,
-    role: u.role ?? "user",
+    role: u.role ?? "student",
     emailVerified: u.emailVerified,
   };
 }
@@ -79,18 +79,16 @@ export const authMacro = new Elysia({ name: "auth-macro" }).macro({
 
       const ability = buildAbility({
         id: result.user.id,
-        role: result.user.role ?? "user",
+        role: result.user.role ?? "student",
       });
 
-      if (opts !== true) {
+      if (opts !== true && ability.cannot(...opts.can)) {
         const [action, subject] = opts.can;
-        if (ability.cannot(action, subject)) {
-          throw new HttpProblem(
-            403,
-            "FORBIDDEN",
-            `You are not allowed to ${action} ${subject}.`,
-          );
-        }
+        throw new HttpProblem(
+          403,
+          "FORBIDDEN",
+          `You are not allowed to ${action} ${subject}.`,
+        );
       }
 
       return {
@@ -306,7 +304,6 @@ export const authRoutes = new Elysia({ name: "auth", prefix: "/api/auth" })
           detail: { summary: "Verify 2FA backup code", security: CSRF },
         },
       )
-      // -- Routes below require an active session --
       .use(authMacro)
       .post(
         "/change-email",
