@@ -4,10 +4,12 @@ import {
   type MongoAbility,
 } from "@casl/ability";
 
-type Actions = "manage" | "create" | "read" | "update" | "delete";
-type Subjects = "Course" | "User" | "Enrollment" | "Order" | "all";
+export type Action = "manage" | "create" | "read" | "update" | "delete";
+export type Subject = "Course" | "User" | "Enrollment" | "Order" | "all";
 
-export type AppAbility = MongoAbility<[Actions, Subjects]>;
+export type AppAbility = MongoAbility<[Action, Subject]>;
+
+export type Permission = readonly [Action, Subject];
 
 export function buildAbility(user: { id: string; role: string }): AppAbility {
   const { can, build } = new AbilityBuilder<AppAbility>(createMongoAbility);
@@ -24,7 +26,7 @@ export function buildAbility(user: { id: string; role: string }): AppAbility {
       can("read", "Enrollment");
       can("read", "Order");
       break;
-    default: // student
+    default:
       can("read", "Course");
       can("create", "Enrollment");
       can("read", "Enrollment");

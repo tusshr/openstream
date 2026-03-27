@@ -1,6 +1,7 @@
 import { Elysia, status } from "elysia";
 
 import { env } from "@/env";
+import { buildAbility, type Permission } from "@/lib/ability";
 import { HttpProblem, problem } from "@/lib/response";
 import { getSession, SESSION_TTL_SEC } from "@/lib/session";
 import { rateLimit } from "@/plugins/rate-limit";
@@ -63,7 +64,7 @@ function setSessionCookie(
 }
 
 export const authMacro = new Elysia({ name: "auth-macro" }).macro({
-  auth: (_: true) => ({
+  auth: (opts: true | { can: Permission }) => ({
     async resolve({ cookie }) {
       const token = cookie[SESSION_COOKIE]?.value as string | undefined;
       if (!token)
@@ -75,9 +76,27 @@ export const authMacro = new Elysia({ name: "auth-macro" }).macro({
           "UNAUTHORIZED",
           "Session expired or invalid.",
         );
+
+      const ability = buildAbility({
+        id: result.user.id,
+        role: result.user.role ?? "user",
+      });
+
+      if (opts !== true) {
+        const [action, subject] = opts.can;
+        if (ability.cannot(action, subject)) {
+          throw new HttpProblem(
+            403,
+            "FORBIDDEN",
+            `You are not allowed to ${action} ${subject}.`,
+          );
+        }
+      }
+
       return {
         user: result.user,
         session: result.session,
+        ability,
       };
     },
   }),
