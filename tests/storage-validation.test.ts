@@ -10,12 +10,12 @@ import { deleteJson, getJson, postJson } from "./helpers/request";
 
 describe("POST /api/storage/presign/upload — body validation", () => {
   test("missing fields → 422", async () => {
-    const res = await postJson<{ error: { code: string; message: string } }>(
+    const res = await postJson<{ code: string; detail: string }>(
       "/api/storage/presign/upload",
       {},
     );
     expect(res.status).toBe(422);
-    expect(res.body.error.code).toBe("VALIDATION_ERROR");
+    expect(res.body.code).toBe("VALIDATION_ERROR");
   });
 
   test("unknown purpose → 422", async () => {
