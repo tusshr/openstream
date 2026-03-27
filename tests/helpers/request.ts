@@ -23,7 +23,8 @@ export async function callApp<T = unknown>(
   const url = path.startsWith("http") ? path : `http://localhost${path}`;
   const response = await app.handle(new Request(url, init));
   const contentType = response.headers.get("content-type") ?? "";
-  const body = contentType.includes("application/json")
+  // Matches application/json and application/problem+json (RFC 9457 errors).
+  const body = contentType.includes("json")
     ? ((await response.json()) as T)
     : ((await response.text()) as unknown as T);
 

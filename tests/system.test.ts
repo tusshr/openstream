@@ -67,11 +67,11 @@ describe("GET /health (alias of /readyz)", () => {
 
 describe("404 handler", () => {
   test("unknown routes return a structured 404", async () => {
-    const res = await getJson<{ error: { code: string; message: string } }>(
+    const res = await getJson<{ code: string; detail: string }>(
       "/this-route-does-not-exist",
     );
     expect(res.status).toBe(404);
-    expect(res.body.error.code).toBe("NOT_FOUND");
+    expect(res.body.code).toBe("NOT_FOUND");
   });
 });
 
