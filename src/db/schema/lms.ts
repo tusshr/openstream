@@ -113,7 +113,7 @@ export const courses = pgTable(
     id: text("id").primaryKey().$defaultFn(generateId),
     educatorId: text("educator_id")
       .notNull()
-      .references(() => educatorProfiles.id),
+      .references(() => user.id),
     categoryId: text("category_id").references(() => categories.id, {
       onDelete: "set null",
     }),

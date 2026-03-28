@@ -258,7 +258,7 @@ async function main() {
   const levels = ["beginner", "intermediate", "advanced"] as const;
   const prices = ["0.00", "19.99", "29.99", "49.99", "79.99"];
   const ratings = ["3.50", "4.00", "4.25", "4.50", "4.75", "5.00"];
-  const educatorIds = [ep1Id, ep2Id];
+  const educatorIds = [educator1Id, educator2Id];
   const catIds = categoryRows.map((c) => c.id);
 
   const courseInserts = COURSE_TITLES.map((title, i) => ({
