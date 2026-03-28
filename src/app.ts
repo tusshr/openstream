@@ -6,6 +6,7 @@ import { authMacro, authRoutes } from "@/modules/auth";
 import { AuthError } from "@/modules/auth/service";
 import { coursesModule } from "@/modules/courses";
 import { categoriesModule } from "@/modules/courses/categories";
+import { courseContentModule } from "@/modules/courses/content";
 import { health } from "@/modules/health";
 import { storage } from "@/modules/storage";
 import { users } from "@/modules/users";
@@ -94,7 +95,12 @@ export const app = new Elysia({
   .use(authRoutes)
   .use(authMacro)
   .group("/api", (app) =>
-    app.use(storage).use(users).use(coursesModule).use(categoriesModule),
+    app
+      .use(storage)
+      .use(users)
+      .use(coursesModule)
+      .use(courseContentModule)
+      .use(categoriesModule),
   );
 
 export type App = typeof app;
