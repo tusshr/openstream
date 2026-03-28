@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, isNotNull, lt, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, isNotNull, like, lt, or, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import {
@@ -11,8 +11,29 @@ import {
   tags,
   user,
 } from "@/db/schema";
+import { slugify, uniqueSlug } from "@/lib/slug";
+
+import type { CreateCourseBody, UpdateCourseBody } from "./model";
 
 const DEFAULT_LIMIT = 20;
+
+const MANAGED_COLUMNS = {
+  id: courses.id,
+  educatorId: courses.educatorId,
+  title: courses.title,
+  slug: courses.slug,
+  description: courses.description,
+  categoryId: courses.categoryId,
+  level: courses.level,
+  status: courses.status,
+  language: courses.language,
+  price: courses.price,
+  thumbnailKey: courses.thumbnailKey,
+  previewVideoKey: courses.previewVideoKey,
+  publishedAt: courses.publishedAt,
+  createdAt: courses.createdAt,
+  updatedAt: courses.updatedAt,
+};
 
 type ListParams = {
   cursor?: string;
@@ -140,8 +161,8 @@ export class CourseService {
       })
       .from(courses)
       .leftJoin(categories, eq(courses.categoryId, categories.id))
-      .leftJoin(educatorProfiles, eq(courses.educatorId, educatorProfiles.id))
-      .leftJoin(user, eq(educatorProfiles.userId, user.id))
+      .leftJoin(user, eq(courses.educatorId, user.id))
+      .leftJoin(educatorProfiles, eq(educatorProfiles.userId, user.id))
       .where(and(eq(courses.slug, slug), eq(courses.status, "published")));
 
     if (!row) return null;
@@ -239,6 +260,65 @@ export class CourseService {
       ),
       tags: tagRows,
     };
+  }
+
+  async getById(id: string) {
+    const [row] = await db
+      .select(MANAGED_COLUMNS)
+      .from(courses)
+      .where(eq(courses.id, id));
+    return row ?? null;
+  }
+
+  async create(educatorId: string, input: CreateCourseBody) {
+    const slug = await uniqueSlug(slugify(input.title), (prefix) =>
+      db
+        .select({ slug: courses.slug })
+        .from(courses)
+        .where(like(courses.slug, `${prefix}%`))
+        .then((rows) => rows.map((r) => r.slug)),
+    );
+
+    const [row] = await db
+      .insert(courses)
+      .values({
+        educatorId,
+        title: input.title,
+        slug,
+        description: input.description ?? null,
+        categoryId: input.categoryId ?? null,
+        level: input.level ?? "beginner",
+        language: input.language ?? "en",
+        price: input.price ?? "0",
+        status: "draft",
+      })
+      .returning(MANAGED_COLUMNS);
+
+    return row!;
+  }
+
+  async update(id: string, patch: UpdateCourseBody) {
+    const [row] = await db
+      .update(courses)
+      .set({
+        ...patch,
+        updatedAt: new Date(),
+        ...(patch.status === "published"
+          ? { publishedAt: sql`coalesce(${courses.publishedAt}, now())` }
+          : {}),
+      })
+      .where(eq(courses.id, id))
+      .returning(MANAGED_COLUMNS);
+
+    return row ?? null;
+  }
+
+  async remove(id: string): Promise<boolean> {
+    const rows = await db
+      .delete(courses)
+      .where(eq(courses.id, id))
+      .returning({ id: courses.id });
+    return rows.length > 0;
   }
 }
 

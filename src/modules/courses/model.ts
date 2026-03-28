@@ -64,6 +64,64 @@ export const CourseEducatorSchema = t.Object({
   bio: t.Union([t.String(), t.Null()]),
 });
 
+const CourseLevelSchema = t.Union([
+  t.Literal("beginner"),
+  t.Literal("intermediate"),
+  t.Literal("advanced"),
+]);
+
+const CourseStatusSchema = t.Union([
+  t.Literal("draft"),
+  t.Literal("published"),
+  t.Literal("archived"),
+]);
+
+const PriceSchema = t.String({ pattern: "^\\d+(\\.\\d{1,2})?$" });
+
+export const CreateCourseBodySchema = t.Object({
+  title: t.String({ minLength: 1, maxLength: 200 }),
+  description: t.Optional(t.String({ maxLength: 5000 })),
+  categoryId: t.Optional(t.String({ minLength: 1 })),
+  level: t.Optional(CourseLevelSchema),
+  language: t.Optional(t.String({ minLength: 2, maxLength: 10 })),
+  price: t.Optional(PriceSchema),
+});
+
+export const UpdateCourseBodySchema = t.Partial(
+  t.Object({
+    title: t.String({ minLength: 1, maxLength: 200 }),
+    description: t.Union([t.String({ maxLength: 5000 }), t.Null()]),
+    categoryId: t.Union([t.String({ minLength: 1 }), t.Null()]),
+    level: CourseLevelSchema,
+    status: CourseStatusSchema,
+    language: t.String({ minLength: 2, maxLength: 10 }),
+    price: PriceSchema,
+    thumbnailKey: t.Union([t.String(), t.Null()]),
+    previewVideoKey: t.Union([t.String(), t.Null()]),
+  }),
+);
+
+export const ManagedCourseSchema = t.Object({
+  id: t.String(),
+  educatorId: t.String(),
+  title: t.String(),
+  slug: t.String(),
+  description: t.Union([t.String(), t.Null()]),
+  categoryId: t.Union([t.String(), t.Null()]),
+  level: CourseLevelSchema,
+  status: CourseStatusSchema,
+  language: t.String(),
+  price: t.String(),
+  thumbnailKey: t.Union([t.String(), t.Null()]),
+  previewVideoKey: t.Union([t.String(), t.Null()]),
+  publishedAt: t.Union([t.Date(), t.Null()]),
+  createdAt: t.Date(),
+  updatedAt: t.Date(),
+});
+
+export type CreateCourseBody = typeof CreateCourseBodySchema.static;
+export type UpdateCourseBody = typeof UpdateCourseBodySchema.static;
+
 export const CourseDetailSchema = t.Object({
   id: t.String(),
   title: t.String(),
