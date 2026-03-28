@@ -29,11 +29,7 @@ export type Permission =
   | ["read" | "update", "User"]
   | ["manage", "all"];
 
-export function buildAbility(user: {
-  id: string;
-  role: string;
-  educatorProfileId?: string | null;
-}): AppAbility {
+export function buildAbility(user: { id: string; role: string }): AppAbility {
   const { can, build } = new AbilityBuilder<AppAbility>(createMongoAbility);
 
   can("read", "Course");
@@ -45,14 +41,8 @@ export function buildAbility(user: {
 
     case "educator":
       can("create", "Course");
-      if (user.educatorProfileId) {
-        can("update", "Course", ["status"], {
-          educatorId: user.educatorProfileId,
-        });
-        can("delete", "Course", {
-          educatorId: user.educatorProfileId,
-        });
-      }
+      can("update", "Course", ["status"], { educatorId: user.id });
+      can("delete", "Course", { educatorId: user.id });
       break;
 
     case "student":

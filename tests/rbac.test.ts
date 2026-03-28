@@ -69,33 +69,20 @@ describe("buildAbility", () => {
 });
 
 describe("ownership conditions (instance-level checks)", () => {
-  test("educator can update/delete only their OWN course", () => {
-    const a = buildAbility({
-      id: "u1",
-      role: "educator",
-      educatorProfileId: "p1",
-    });
-    expect(a.can("update", subject("Course", { educatorId: "p1" }))).toBe(true);
-    expect(a.can("delete", subject("Course", { educatorId: "p1" }))).toBe(true);
-    expect(a.can("update", subject("Course", { educatorId: "p2" }))).toBe(
-      false,
-    );
-    expect(a.can("delete", subject("Course", { educatorId: "p2" }))).toBe(
-      false,
-    );
-  });
-
-  test("educator without a profile cannot update any course", () => {
+  test("educator can update/delete only their OWN course (keyed on user id)", () => {
     const a = buildAbility({ id: "u1", role: "educator" });
-    expect(a.can("update", "Course")).toBe(false);
+    expect(a.can("update", subject("Course", { educatorId: "u1" }))).toBe(true);
+    expect(a.can("delete", subject("Course", { educatorId: "u1" }))).toBe(true);
+    expect(a.can("update", subject("Course", { educatorId: "u2" }))).toBe(
+      false,
+    );
+    expect(a.can("delete", subject("Course", { educatorId: "u2" }))).toBe(
+      false,
+    );
   });
 
   test("educator cannot read orders, nor enrollments in the blanket", () => {
-    const a = buildAbility({
-      id: "u1",
-      role: "educator",
-      educatorProfileId: "p1",
-    });
+    const a = buildAbility({ id: "u1", role: "educator" });
     expect(a.can("read", "Order")).toBe(false);
     expect(a.can("read", "Enrollment")).toBe(false);
   });
