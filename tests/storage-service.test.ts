@@ -14,8 +14,8 @@ const { __testing, StorageService } = await import("@/modules/storage/service");
 
 const { slugifyFileName, buildObjectKey, checkKeyOwnership } = __testing;
 
-const alice = { id: "alice", role: "user" } as const;
-const bob = { id: "bob", role: "user" } as const;
+const alice = { id: "alice", role: "student" } as const;
+const bob = { id: "bob", role: "student" } as const;
 const root = { id: "root", role: "admin" } as const;
 
 describe("slugifyFileName", () => {

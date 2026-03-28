@@ -1,3 +1,4 @@
+import { subject } from "@casl/ability";
 import { describe, expect, test } from "bun:test";
 
 import { buildAbility } from "@/lib/ability";
@@ -60,10 +61,59 @@ describe("buildAbility", () => {
   });
 
   test("student can neither author courses nor manage users", () => {
-    const a = buildAbility({ id: "1", role: "user" });
+    const a = buildAbility({ id: "1", role: "student" });
     expect(a.can("read", "Course")).toBe(true);
     expect(a.can("create", "Course")).toBe(false);
     expect(a.can("read", "User")).toBe(false);
+  });
+});
+
+describe("ownership conditions (instance-level checks)", () => {
+  test("educator can update/delete only their OWN course", () => {
+    const a = buildAbility({
+      id: "u1",
+      role: "educator",
+      educatorProfileId: "p1",
+    });
+    expect(a.can("update", subject("Course", { educatorId: "p1" }))).toBe(true);
+    expect(a.can("delete", subject("Course", { educatorId: "p1" }))).toBe(true);
+    expect(a.can("update", subject("Course", { educatorId: "p2" }))).toBe(
+      false,
+    );
+    expect(a.can("delete", subject("Course", { educatorId: "p2" }))).toBe(
+      false,
+    );
+  });
+
+  test("educator without a profile cannot update any course", () => {
+    const a = buildAbility({ id: "u1", role: "educator" });
+    expect(a.can("update", "Course")).toBe(false);
+  });
+
+  test("educator cannot read orders, nor enrollments in the blanket", () => {
+    const a = buildAbility({
+      id: "u1",
+      role: "educator",
+      educatorProfileId: "p1",
+    });
+    expect(a.can("read", "Order")).toBe(false);
+    expect(a.can("read", "Enrollment")).toBe(false);
+  });
+
+  test("student reads only their OWN enrollment and order", () => {
+    const a = buildAbility({ id: "u1", role: "student" });
+    expect(a.can("read", subject("Enrollment", { userId: "u1" }))).toBe(true);
+    expect(a.can("read", subject("Enrollment", { userId: "u2" }))).toBe(false);
+    expect(a.can("read", subject("Order", { userId: "u1" }))).toBe(true);
+    expect(a.can("read", subject("Order", { userId: "u2" }))).toBe(false);
+  });
+
+  test("admin bypasses all ownership conditions", () => {
+    const a = buildAbility({ id: "admin1", role: "admin" });
+    expect(a.can("update", subject("Course", { educatorId: "anyone" }))).toBe(
+      true,
+    );
+    expect(a.can("read", subject("Order", { userId: "anyone" }))).toBe(true);
   });
 });
 
@@ -76,7 +126,7 @@ describe("RBAC enforcement on GET /api/users (read:User)", () => {
   test("authenticated student → 403 problem+json", async () => {
     const res = await getJson<Problem>(
       "/api/users",
-      authed(await forgeSession("user")),
+      authed(await forgeSession("student")),
     );
     expect(res.status).toBe(403);
     expect(res.headers.get("content-type")).toContain(
