@@ -58,6 +58,7 @@ export const enrollmentStatusEnum = pgEnum("enrollment_status", [
   "completed",
   "refunded",
   "suspended",
+  "dropped", // voluntary unenroll (distinct from refund/suspension)
 ]);
 
 export const orderStatusEnum = pgEnum("order_status", [
