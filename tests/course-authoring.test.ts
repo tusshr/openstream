@@ -93,3 +93,45 @@ describe("course authoring — write routes require an authed educator", () => {
     expect(remove.status).toBe(403);
   });
 });
+
+describe("chapter/lesson authoring composes from course ownership", () => {
+  test("anonymous → 401 on chapter and lesson writes", async () => {
+    const ch = await callApp("/api/chapters", {
+      method: "POST",
+      headers: json(),
+      body: JSON.stringify({ courseId: "c1", title: "Ch" }),
+    });
+    const le = await callApp("/api/lessons", {
+      method: "POST",
+      headers: json(),
+      body: JSON.stringify({ chapterId: "ch1", title: "L" }),
+    });
+    expect(ch.status).toBe(401);
+    expect(le.status).toBe(401);
+  });
+
+  test("student → 403 (lacks update:Course on the parent)", async () => {
+    const token = await forgeSession("student");
+
+    const createChapter = await callApp<{ code: string }>("/api/chapters", {
+      method: "POST",
+      headers: json(token),
+      body: JSON.stringify({ courseId: "c1", title: "Ch" }),
+    });
+    expect(createChapter.status).toBe(403);
+    expect(createChapter.body.code).toBe("FORBIDDEN");
+
+    const updateChapter = await callApp("/api/chapters/ch1", {
+      method: "PATCH",
+      headers: json(token),
+      body: JSON.stringify({ title: "x" }),
+    });
+    expect(updateChapter.status).toBe(403);
+
+    const deleteLesson = await callApp("/api/lessons/l1", {
+      method: "DELETE",
+      headers: { ...CSRF, cookie: `session_token=${token}` },
+    });
+    expect(deleteLesson.status).toBe(403);
+  });
+});
