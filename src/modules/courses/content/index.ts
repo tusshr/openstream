@@ -1,12 +1,10 @@
-import { subject } from "@casl/ability";
 import { Elysia, status, t } from "elysia";
 
-import { type AppAbility } from "@/lib/ability";
 import { ProblemDetailsSchema } from "@/lib/api/models";
 import { dataOf, HttpProblem, ok } from "@/lib/response";
 import { authMacro } from "@/modules/auth";
 
-import { courseService } from "../service";
+import { requireOwnedCourse } from "../authz";
 import {
   ChapterSchema,
   CreateChapterBodySchema,
@@ -16,19 +14,6 @@ import {
   UpdateLessonBodySchema,
 } from "./model";
 import { courseContentService } from "./service";
-
-async function requireOwnedCourse(courseId: string, ability: AppAbility) {
-  const course = await courseService.getById(courseId);
-  if (!course) throw new HttpProblem(404, "NOT_FOUND", "Course not found.");
-  if (ability.cannot("update", subject("Course", course))) {
-    throw new HttpProblem(
-      403,
-      "FORBIDDEN",
-      "You can only manage your own courses.",
-    );
-  }
-  return course;
-}
 
 const idParam = t.Object({ id: t.String({ minLength: 1 }) });
 const deletedResponse = dataOf(
