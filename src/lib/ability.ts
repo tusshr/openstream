@@ -71,7 +71,6 @@ export function buildAbility(user: { id: string; role: string }): AppAbility {
       can("create", "Review");
       can("update", "Review", { userId: user.id });
       can("delete", "Review", { userId: user.id });
-      // Lesson progress is private (read own only) and self-recorded.
       can("create", "Progress");
       can("read", "Progress", { userId: user.id });
       break;
