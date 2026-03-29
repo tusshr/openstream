@@ -28,6 +28,7 @@ export function okWithMeta<T>(
 const STATUS_TITLES: Record<number, string> = {
   400: "Bad Request",
   401: "Unauthorized",
+  402: "Payment Required",
   403: "Forbidden",
   404: "Not Found",
   409: "Conflict",
@@ -64,9 +65,6 @@ export function problem(opts: {
   });
 }
 
-// Throw from any handler/resolve/hook to short-circuit with an RFC 9457 error.
-// The central onError formats it via problem(), so call sites stay free of
-// Response plumbing (and dodge Elysia's typed-handler return-union friction).
 export class HttpProblem extends Error {
   readonly errors?: FieldError[] | undefined;
   readonly extensions?: Record<string, unknown> | undefined;

@@ -16,7 +16,7 @@ type UserSubject = Pick<typeof user.$inferSelect, "role"> | "User";
 type Abilities =
   | ["manage", "all"]
   | ["create" | "read" | "update" | "delete", CourseSubject]
-  | ["create" | "read", EnrollmentSubject]
+  | ["create" | "read" | "delete", EnrollmentSubject]
   | ["create" | "read", OrderSubject]
   | ["read" | "update", UserSubject];
 
@@ -24,7 +24,7 @@ export type AppAbility = MongoAbility<Abilities>;
 
 export type Permission =
   | ["create" | "read" | "update" | "delete", "Course"]
-  | ["create" | "read", "Enrollment"]
+  | ["create" | "read" | "delete", "Enrollment"]
   | ["create" | "read", "Order"]
   | ["read" | "update", "User"]
   | ["manage", "all"];
@@ -48,6 +48,7 @@ export function buildAbility(user: { id: string; role: string }): AppAbility {
     case "student":
       can("create", "Enrollment");
       can("read", "Enrollment", { userId: user.id });
+      can("delete", "Enrollment", { userId: user.id }); // unenroll own
       can("create", "Order");
       can("read", "Order", { userId: user.id });
       break;
