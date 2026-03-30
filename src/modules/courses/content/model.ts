@@ -67,7 +67,26 @@ export const LessonSchema = t.Object({
   updatedAt: t.Date(),
 });
 
+export const CreateAttachmentBodySchema = t.Object({
+  lessonId: t.String({ minLength: 1 }),
+  name: t.String({ minLength: 1, maxLength: 255 }),
+  fileKey: t.String({ minLength: 1 }),
+  fileSize: t.Optional(t.Integer({ minimum: 0 })),
+  mimeType: t.Optional(t.String({ maxLength: 255 })),
+});
+
+export const AttachmentSchema = t.Object({
+  id: t.String(),
+  lessonId: t.String(),
+  name: t.String(),
+  fileKey: t.String(),
+  fileSize: t.Union([t.Integer(), t.Null()]),
+  mimeType: t.Union([t.String(), t.Null()]),
+  createdAt: t.Date(),
+});
+
 export type CreateChapterBody = typeof CreateChapterBodySchema.static;
 export type UpdateChapterBody = typeof UpdateChapterBodySchema.static;
 export type CreateLessonBody = typeof CreateLessonBodySchema.static;
 export type UpdateLessonBody = typeof UpdateLessonBodySchema.static;
+export type CreateAttachmentBody = typeof CreateAttachmentBodySchema.static;
