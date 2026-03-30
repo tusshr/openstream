@@ -16,6 +16,11 @@ export const ProgressSchema = t.Object({
   updatedAt: t.Date(),
 });
 
+export const RecordProgressResponseSchema = t.Object({
+  progress: ProgressSchema,
+  courseCompleted: t.Boolean(),
+});
+
 export const CourseProgressItemSchema = t.Object({
   lessonId: t.String(),
   lessonTitle: t.String(),

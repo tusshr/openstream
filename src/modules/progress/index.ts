@@ -6,8 +6,8 @@ import { authMacro } from "@/modules/auth";
 
 import {
   CourseProgressItemSchema,
-  ProgressSchema,
   RecordProgressBodySchema,
+  RecordProgressResponseSchema,
 } from "./model";
 import { progressService } from "./service";
 
@@ -30,14 +30,17 @@ export const progressModule = new Elysia({
             "You must be enrolled in the course to track progress.",
           );
         case "ok":
-          return ok(result.progress);
+          return ok({
+            progress: result.progress,
+            courseCompleted: result.courseCompleted,
+          });
       }
     },
     {
       auth: { can: ["create", "Progress"] },
       body: RecordProgressBodySchema,
       response: {
-        200: dataOf(ProgressSchema),
+        200: dataOf(RecordProgressResponseSchema),
         403: ProblemDetailsSchema,
         404: ProblemDetailsSchema,
       },

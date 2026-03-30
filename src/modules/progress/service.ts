@@ -2,11 +2,16 @@ import { and, asc, eq, inArray, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import { enrollments, lessonProgress, lessons } from "@/db/schema";
+import { certificateService } from "@/modules/certificates/service";
 
 import type { RecordProgressBody } from "./model";
 
 type RecordResult =
-  | { kind: "ok"; progress: typeof lessonProgress.$inferSelect }
+  | {
+      kind: "ok";
+      progress: typeof lessonProgress.$inferSelect;
+      courseCompleted: boolean;
+    }
   | { kind: "not-found" } // lesson missing
   | { kind: "not-enrolled" };
 
@@ -37,28 +42,38 @@ export class ProgressService {
     const watchedSeconds = input.watchedSeconds ?? 0;
     const completedAt = input.completed ? now : null;
 
-    const [row] = await db
-      .insert(lessonProgress)
-      .values({
-        userId,
-        lessonId: input.lessonId,
-        courseId: lesson.courseId,
-        watchedSeconds,
-        completedAt,
-      })
-      .onConflictDoUpdate({
-        target: [lessonProgress.userId, lessonProgress.lessonId],
-        set: {
+    return db.transaction(async (tx) => {
+      const [row] = await tx
+        .insert(lessonProgress)
+        .values({
+          userId,
+          lessonId: input.lessonId,
+          courseId: lesson.courseId,
           watchedSeconds,
-          completedAt: input.completed
-            ? sql`coalesce(${lessonProgress.completedAt}, ${now})`
-            : null,
-          updatedAt: now,
-        },
-      })
-      .returning();
+          completedAt,
+        })
+        .onConflictDoUpdate({
+          target: [lessonProgress.userId, lessonProgress.lessonId],
+          set: {
+            watchedSeconds,
+            completedAt: input.completed
+              ? sql`coalesce(${lessonProgress.completedAt}, ${now})`
+              : null,
+            updatedAt: now,
+          },
+        })
+        .returning();
 
-    return { kind: "ok", progress: row! };
+      const cert = input.completed
+        ? await certificateService.completeCourseIfDone(
+            tx,
+            userId,
+            lesson.courseId,
+          )
+        : null;
+
+      return { kind: "ok", progress: row!, courseCompleted: cert !== null };
+    });
   }
 
   listForCourse(userId: string, courseId: string) {
