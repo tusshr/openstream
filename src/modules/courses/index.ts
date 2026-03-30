@@ -11,6 +11,7 @@ import {
 } from "@/lib/response";
 import { authMacro } from "@/modules/auth";
 
+import { requireOwnedCourse } from "./authz";
 import {
   CourseCardSchema,
   CourseDetailSchema,
@@ -51,6 +52,45 @@ export const coursesModule = new Elysia({ name: "courses", prefix: "/courses" })
         description:
           "Paginated course catalog with optional category/level filters and full-text search.",
         tags: ["Courses"],
+      },
+    },
+  )
+  .get(
+    "/mine",
+    async ({ user }) => ok(await courseService.listByEducator(user.id)),
+    {
+      auth: { can: ["create", "Course"] },
+      response: { 200: dataOf(t.Array(ManagedCourseSchema)) },
+      detail: {
+        summary: "List my courses",
+        description:
+          "Educator dashboard — own courses in any status (incl. drafts).",
+        tags: ["Courses"],
+        security: [{ sessionCookie: [] }],
+      },
+    },
+  )
+  .get(
+    "/mine/:id",
+    async ({ params, ability }) => {
+      await requireOwnedCourse(params.id, ability);
+      const course = await courseService.getOwnedDetail(params.id);
+      if (!course) throw new HttpProblem(404, "NOT_FOUND", "Course not found.");
+      return ok(course);
+    },
+    {
+      auth: { can: ["create", "Course"] },
+      params: idParam,
+      response: {
+        200: "courses.detail",
+        403: ProblemDetailsSchema,
+        404: ProblemDetailsSchema,
+      },
+      detail: {
+        summary: "Get my course (any status, incl. draft)",
+        description: "Owner/admin preview of a course before it's published.",
+        tags: ["Courses"],
+        security: [{ sessionCookie: [] }],
       },
     },
   )

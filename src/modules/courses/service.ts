@@ -1,4 +1,15 @@
-import { and, asc, desc, eq, isNotNull, like, lt, or, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  isNotNull,
+  like,
+  lt,
+  or,
+  sql,
+  type SQL,
+} from "drizzle-orm";
 
 import { db } from "@/db";
 import {
@@ -141,6 +152,24 @@ export class CourseService {
   }
 
   async getBySlug(slug: string) {
+    return this.loadDetail(
+      and(eq(courses.slug, slug), eq(courses.status, "published"))!,
+    );
+  }
+
+  async getOwnedDetail(id: string) {
+    return this.loadDetail(eq(courses.id, id));
+  }
+
+  listByEducator(userId: string) {
+    return db
+      .select(MANAGED_COLUMNS)
+      .from(courses)
+      .where(eq(courses.educatorId, userId))
+      .orderBy(desc(courses.createdAt));
+  }
+
+  private async loadDetail(where: SQL) {
     const [row] = await db
       .select({
         id: courses.id,
@@ -163,7 +192,7 @@ export class CourseService {
       .leftJoin(categories, eq(courses.categoryId, categories.id))
       .leftJoin(user, eq(courses.educatorId, user.id))
       .leftJoin(educatorProfiles, eq(educatorProfiles.userId, user.id))
-      .where(and(eq(courses.slug, slug), eq(courses.status, "published")));
+      .where(where);
 
     if (!row) return null;
 
