@@ -4,6 +4,7 @@ import { HttpProblem, problem } from "@/lib/response";
 import { buildValidationResponse } from "@/lib/validation";
 import { authMacro, authRoutes } from "@/modules/auth";
 import { AuthError } from "@/modules/auth/service";
+import { certificatesModule } from "@/modules/certificates";
 import { coursesModule } from "@/modules/courses";
 import { categoriesModule } from "@/modules/courses/categories";
 import { courseContentModule } from "@/modules/courses/content";
@@ -106,6 +107,7 @@ export const app = new Elysia({
       .use(enrollmentsModule)
       .use(reviewsModule)
       .use(progressModule)
+      .use(certificatesModule)
       .use(categoriesModule),
   );
 

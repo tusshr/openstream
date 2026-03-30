@@ -5,6 +5,7 @@ import {
 } from "@casl/ability";
 
 import {
+  certificates,
   courseReviews,
   courses,
   enrollments,
@@ -24,6 +25,9 @@ type ReviewSubject =
 type ProgressSubject =
   | Pick<typeof lessonProgress.$inferSelect, "userId">
   | "Progress";
+type CertificateSubject =
+  | Pick<typeof certificates.$inferSelect, "userId">
+  | "Certificate";
 type UserSubject = Pick<typeof user.$inferSelect, "role"> | "User";
 
 type Abilities =
@@ -33,6 +37,7 @@ type Abilities =
   | ["create" | "read", OrderSubject]
   | ["create" | "update" | "delete", ReviewSubject]
   | ["create" | "read", ProgressSubject]
+  | ["read", CertificateSubject]
   | ["read" | "update", UserSubject];
 
 export type AppAbility = MongoAbility<Abilities>;
@@ -43,6 +48,7 @@ export type Permission =
   | ["create" | "read", "Order"]
   | ["create" | "update" | "delete", "Review"]
   | ["create" | "read", "Progress"]
+  | ["read", "Certificate"]
   | ["read" | "update", "User"]
   | ["manage", "all"];
 
@@ -73,6 +79,7 @@ export function buildAbility(user: { id: string; role: string }): AppAbility {
       can("delete", "Review", { userId: user.id });
       can("create", "Progress");
       can("read", "Progress", { userId: user.id });
+      can("read", "Certificate", { userId: user.id }); // verify is public
       break;
 
     default:
