@@ -135,3 +135,62 @@ describe("chapter/lesson authoring composes from course ownership", () => {
     expect(deleteLesson.status).toBe(403);
   });
 });
+
+describe("lesson attachments compose from course ownership", () => {
+  test("anonymous → 401", async () => {
+    const create = await callApp("/api/attachments", {
+      method: "POST",
+      headers: json(),
+      body: JSON.stringify({ lessonId: "l1", name: "f", fileKey: "k" }),
+    });
+    expect(create.status).toBe(401);
+  });
+
+  test("student → 403 on attach/list/delete", async () => {
+    const token = await forgeSession("student");
+    const create = await callApp<{ code: string }>("/api/attachments", {
+      method: "POST",
+      headers: json(token),
+      body: JSON.stringify({ lessonId: "l1", name: "f", fileKey: "k" }),
+    });
+    expect(create.status).toBe(403);
+    expect(create.body.code).toBe("FORBIDDEN");
+
+    const list = await callApp("/api/attachments/lesson/l1", {
+      method: "GET",
+      headers: { cookie: `session_token=${token}` },
+    });
+    expect(list.status).toBe(403);
+
+    const remove = await callApp("/api/attachments/a1", {
+      method: "DELETE",
+      headers: { ...CSRF, cookie: `session_token=${token}` },
+    });
+    expect(remove.status).toBe(403);
+  });
+});
+
+describe("reading own drafts (educator dashboard)", () => {
+  test("anonymous → 401", async () => {
+    expect((await callApp("/api/courses/mine", { method: "GET" })).status).toBe(
+      401,
+    );
+    expect(
+      (await callApp("/api/courses/mine/c1", { method: "GET" })).status,
+    ).toBe(401);
+  });
+
+  test("student → 403 (not a course author)", async () => {
+    const token = await forgeSession("student");
+    const list = await callApp("/api/courses/mine", {
+      method: "GET",
+      headers: { cookie: `session_token=${token}` },
+    });
+    const detail = await callApp("/api/courses/mine/c1", {
+      method: "GET",
+      headers: { cookie: `session_token=${token}` },
+    });
+    expect(list.status).toBe(403);
+    expect(detail.status).toBe(403);
+  });
+});
