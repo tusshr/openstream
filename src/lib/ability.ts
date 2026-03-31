@@ -38,6 +38,7 @@ type Abilities =
   | ["create" | "update" | "delete", ReviewSubject]
   | ["create" | "read", ProgressSubject]
   | ["read", CertificateSubject]
+  | ["create" | "update", "EducatorProfile"]
   | ["read" | "update", UserSubject];
 
 export type AppAbility = MongoAbility<Abilities>;
@@ -49,6 +50,7 @@ export type Permission =
   | ["create" | "update" | "delete", "Review"]
   | ["create" | "read", "Progress"]
   | ["read", "Certificate"]
+  | ["create" | "update", "EducatorProfile"]
   | ["read" | "update", "User"]
   | ["manage", "all"];
 
@@ -66,6 +68,8 @@ export function buildAbility(user: { id: string; role: string }): AppAbility {
       can("create", "Course");
       can("update", "Course", ["status"], { educatorId: user.id });
       can("delete", "Course", { educatorId: user.id });
+      can("create", "EducatorProfile");
+      can("update", "EducatorProfile");
       break;
 
     case "student":

@@ -8,6 +8,7 @@ import { certificatesModule } from "@/modules/certificates";
 import { coursesModule } from "@/modules/courses";
 import { categoriesModule } from "@/modules/courses/categories";
 import { courseContentModule } from "@/modules/courses/content";
+import { educatorsModule } from "@/modules/educators";
 import { enrollmentsModule } from "@/modules/enrollments";
 import { health } from "@/modules/health";
 import { ordersModule } from "@/modules/orders";
@@ -112,6 +113,7 @@ export const app = new Elysia({
       .use(progressModule)
       .use(certificatesModule)
       .use(ordersModule)
+      .use(educatorsModule)
       .use(categoriesModule),
   );
 
