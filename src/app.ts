@@ -10,6 +10,7 @@ import { categoriesModule } from "@/modules/courses/categories";
 import { courseContentModule } from "@/modules/courses/content";
 import { enrollmentsModule } from "@/modules/enrollments";
 import { health } from "@/modules/health";
+import { playerModule } from "@/modules/player";
 import { progressModule } from "@/modules/progress";
 import { reviewsModule } from "@/modules/reviews";
 import { storage } from "@/modules/storage";
@@ -104,6 +105,7 @@ export const app = new Elysia({
       .use(users)
       .use(coursesModule)
       .use(courseContentModule)
+      .use(playerModule)
       .use(enrollmentsModule)
       .use(reviewsModule)
       .use(progressModule)
