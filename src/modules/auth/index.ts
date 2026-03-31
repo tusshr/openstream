@@ -2,19 +2,26 @@ import { Elysia, status } from "elysia";
 
 import { env } from "@/env";
 import { buildAbility, type Permission } from "@/lib/ability";
+import { errorModels } from "@/lib/api/error-models";
 import { HttpProblem, problem } from "@/lib/response";
 import { getSession, SESSION_TTL_SEC } from "@/lib/session";
 import { rateLimit } from "@/plugins/rate-limit";
 
 import {
+  AuthUserResponseSchema,
   BackupCodeBodySchema,
+  BackupCodesResponseSchema,
   ChangeEmailBodySchema,
   EmailBodySchema,
+  MessageResponseSchema,
   ResetPasswordBodySchema,
+  SessionResponseSchema,
   SignInBodySchema,
+  SignInResponseSchema,
   SignUpBodySchema,
   TokenBodySchema,
   TotpCodeBodySchema,
+  TotpSetupResponseSchema,
   TotpVerifyBodySchema,
 } from "./model";
 import { AuthError, authService } from "./service";
@@ -104,6 +111,7 @@ const CSRF = [{ csrfHeader: [] }];
 const SESSION_CSRF = [{ sessionCookie: [], csrfHeader: [] }];
 
 export const authRoutes = new Elysia({ name: "auth", prefix: "/api/auth" })
+  .use(errorModels)
   .onError(({ error, request }) => {
     if (error instanceof AuthError) {
       return problem({
@@ -131,6 +139,12 @@ export const authRoutes = new Elysia({ name: "auth", prefix: "/api/auth" })
             windowSec: 60,
           }),
           body: SignUpBodySchema,
+          response: {
+            201: MessageResponseSchema,
+            409: "ProblemDetails",
+            422: "ProblemDetails",
+            429: "ProblemDetails",
+          },
           detail: { summary: "Sign up", security: CSRF },
         },
       )
@@ -160,6 +174,13 @@ export const authRoutes = new Elysia({ name: "auth", prefix: "/api/auth" })
             windowSec: 60,
           }),
           body: SignInBodySchema,
+          response: {
+            200: SignInResponseSchema,
+            401: "ProblemDetails",
+            403: "ProblemDetails",
+            422: "ProblemDetails",
+            429: "ProblemDetails",
+          },
           detail: { summary: "Sign in", security: CSRF },
         },
       )
@@ -174,19 +195,33 @@ export const authRoutes = new Elysia({ name: "auth", prefix: "/api/auth" })
           cookie[SESSION_COOKIE]?.remove();
           return { data: { message: "Signed out." } };
         },
-        { detail: { summary: "Sign out", security: CSRF } },
+        {
+          response: { 200: MessageResponseSchema },
+          detail: { summary: "Sign out", security: CSRF },
+        },
       )
-      .get("/session", async ({ cookie }) => {
-        const token = cookie[SESSION_COOKIE]?.value as string | undefined;
-        if (!token)
-          throw new HttpProblem(401, "UNAUTHORIZED", "Not authenticated.");
-        const result = await getSession(token);
-        if (!result)
-          throw new HttpProblem(401, "UNAUTHORIZED", "Session expired.");
-        return {
-          data: { user: serializeUser(result.user), session: result.session },
-        };
-      })
+      .get(
+        "/session",
+        async ({ cookie }) => {
+          const token = cookie[SESSION_COOKIE]?.value as string | undefined;
+          if (!token)
+            throw new HttpProblem(401, "UNAUTHORIZED", "Not authenticated.");
+          const result = await getSession(token);
+          if (!result)
+            throw new HttpProblem(401, "UNAUTHORIZED", "Session expired.");
+          return {
+            data: { user: serializeUser(result.user), session: result.session },
+          };
+        },
+        {
+          response: { 200: SessionResponseSchema, 401: "ProblemDetails" },
+          detail: {
+            summary: "Get current session",
+            tags: ["Auth"],
+            security: [{ sessionCookie: [] }],
+          },
+        },
+      )
       .post(
         "/verify-email",
         async ({ body }) => {
@@ -195,6 +230,11 @@ export const authRoutes = new Elysia({ name: "auth", prefix: "/api/auth" })
         },
         {
           body: TokenBodySchema,
+          response: {
+            200: MessageResponseSchema,
+            400: "ProblemDetails",
+            422: "ProblemDetails",
+          },
           detail: { summary: "Verify email", security: CSRF },
         },
       )
@@ -216,6 +256,11 @@ export const authRoutes = new Elysia({ name: "auth", prefix: "/api/auth" })
             windowSec: 60,
           }),
           body: EmailBodySchema,
+          response: {
+            200: MessageResponseSchema,
+            422: "ProblemDetails",
+            429: "ProblemDetails",
+          },
           detail: { summary: "Resend verification email", security: CSRF },
         },
       )
@@ -237,6 +282,11 @@ export const authRoutes = new Elysia({ name: "auth", prefix: "/api/auth" })
             windowSec: 60,
           }),
           body: EmailBodySchema,
+          response: {
+            200: MessageResponseSchema,
+            422: "ProblemDetails",
+            429: "ProblemDetails",
+          },
           detail: { summary: "Forgot password", security: CSRF },
         },
       )
@@ -248,6 +298,11 @@ export const authRoutes = new Elysia({ name: "auth", prefix: "/api/auth" })
         },
         {
           body: ResetPasswordBodySchema,
+          response: {
+            200: MessageResponseSchema,
+            400: "ProblemDetails",
+            422: "ProblemDetails",
+          },
           detail: { summary: "Reset password", security: CSRF },
         },
       )
@@ -259,6 +314,11 @@ export const authRoutes = new Elysia({ name: "auth", prefix: "/api/auth" })
         },
         {
           body: TokenBodySchema,
+          response: {
+            200: MessageResponseSchema,
+            400: "ProblemDetails",
+            422: "ProblemDetails",
+          },
           detail: { summary: "Confirm email change", security: CSRF },
         },
       )
@@ -280,6 +340,12 @@ export const authRoutes = new Elysia({ name: "auth", prefix: "/api/auth" })
             windowSec: 60,
           }),
           body: TotpVerifyBodySchema,
+          response: {
+            200: AuthUserResponseSchema,
+            400: "ProblemDetails",
+            422: "ProblemDetails",
+            429: "ProblemDetails",
+          },
           detail: { summary: "Verify 2FA code", security: CSRF },
         },
       )
@@ -301,6 +367,12 @@ export const authRoutes = new Elysia({ name: "auth", prefix: "/api/auth" })
             windowSec: 60,
           }),
           body: BackupCodeBodySchema,
+          response: {
+            200: AuthUserResponseSchema,
+            400: "ProblemDetails",
+            422: "ProblemDetails",
+            429: "ProblemDetails",
+          },
           detail: { summary: "Verify 2FA backup code", security: CSRF },
         },
       )
@@ -319,6 +391,12 @@ export const authRoutes = new Elysia({ name: "auth", prefix: "/api/auth" })
         {
           auth: true,
           body: ChangeEmailBodySchema,
+          response: {
+            200: MessageResponseSchema,
+            401: "ProblemDetails",
+            409: "ProblemDetails",
+            422: "ProblemDetails",
+          },
           detail: { summary: "Request email change", security: SESSION_CSRF },
         },
       )
@@ -330,6 +408,7 @@ export const authRoutes = new Elysia({ name: "auth", prefix: "/api/auth" })
         },
         {
           auth: true,
+          response: { 200: TotpSetupResponseSchema, 401: "ProblemDetails" },
           detail: { summary: "Set up 2FA", security: SESSION_CSRF },
         },
       )
@@ -342,6 +421,12 @@ export const authRoutes = new Elysia({ name: "auth", prefix: "/api/auth" })
         {
           auth: true,
           body: TotpCodeBodySchema,
+          response: {
+            200: BackupCodesResponseSchema,
+            400: "ProblemDetails",
+            401: "ProblemDetails",
+            422: "ProblemDetails",
+          },
           detail: { summary: "Enable 2FA", security: SESSION_CSRF },
         },
       )
@@ -354,6 +439,12 @@ export const authRoutes = new Elysia({ name: "auth", prefix: "/api/auth" })
         {
           auth: true,
           body: TotpCodeBodySchema,
+          response: {
+            200: MessageResponseSchema,
+            400: "ProblemDetails",
+            401: "ProblemDetails",
+            422: "ProblemDetails",
+          },
           detail: { summary: "Disable 2FA", security: SESSION_CSRF },
         },
       ),

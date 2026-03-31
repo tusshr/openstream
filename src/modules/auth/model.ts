@@ -41,3 +41,43 @@ export const BackupCodeBodySchema = t.Object({
   pendingToken: t.String({ minLength: 1 }),
   code: t.String({ minLength: 1 }),
 });
+
+// ---- Response shapes ----
+
+const SerializedUserSchema = t.Object({
+  id: t.String(),
+  name: t.String(),
+  email: t.String(),
+  role: t.String(),
+  emailVerified: t.Boolean(),
+});
+
+export const MessageResponseSchema = t.Object({
+  data: t.Object({ message: t.String() }),
+});
+
+export const SignInResponseSchema = t.Object({
+  data: t.Union([
+    t.Object({ user: SerializedUserSchema }),
+    t.Object({
+      requiresTwoFactor: t.Literal(true),
+      pendingToken: t.String(),
+    }),
+  ]),
+});
+
+export const AuthUserResponseSchema = t.Object({
+  data: t.Object({ user: SerializedUserSchema }),
+});
+
+export const SessionResponseSchema = t.Object({
+  data: t.Object({ user: SerializedUserSchema, session: t.Unknown() }),
+});
+
+export const TotpSetupResponseSchema = t.Object({
+  data: t.Object({ secret: t.String(), uri: t.String() }),
+});
+
+export const BackupCodesResponseSchema = t.Object({
+  data: t.Object({ backupCodes: t.Array(t.String()) }),
+});
