@@ -27,8 +27,13 @@ const docsPlugin = openApiPlugin({
   documentation: {
     info: {
       title: "OpenStream API",
-      description:
+      description: [
         "REST API for the OpenStream LMS platform. Covers authentication, user profiles, course catalog, chapter and lesson management, enrollments, progress tracking, reviews, certificates, orders, and file storage.",
+        "",
+        "**Errors** follow RFC 9457, served as `application/problem+json` with the shape `{ type, title, status, detail, code, instance?, errors? }` (`code` is the machine-readable error). Beyond the per-operation responses below, any endpoint may return: `401` (no/invalid session), `403` (insufficient role, ownership, or missing CSRF header), `422` (request validation), `429` (rate limited), and `500`.",
+        "",
+        "**CSRF**: state-changing requests (POST/PUT/PATCH/DELETE) require the `X-Requested-With: openstream` header.",
+      ].join("\n"),
       version: "1.0.0",
     },
     tags: [
@@ -48,7 +53,6 @@ const docsPlugin = openApiPlugin({
         description: "Course catalog — create, publish, search",
       },
       { name: "Categories", description: "Course category taxonomy" },
-      { name: "Tags", description: "Course tag management" },
       {
         name: "Chapters",
         description: "Course chapter ordering and management",
