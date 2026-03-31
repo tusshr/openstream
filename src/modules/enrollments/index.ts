@@ -1,6 +1,6 @@
 import { Elysia, status, t } from "elysia";
 
-import { ProblemDetailsSchema } from "@/lib/api/models";
+import { errorModels } from "@/lib/api/error-models";
 import { dataOf, HttpProblem, ok } from "@/lib/response";
 import { authMacro } from "@/modules/auth";
 import { requireOwnedCourse } from "@/modules/courses/authz";
@@ -18,6 +18,7 @@ export const enrollmentsModule = new Elysia({
   prefix: "/enrollments",
 })
   .use(authMacro)
+  .use(errorModels)
   // Student: enroll in a (free, published) course.
   .post(
     "/",
@@ -50,10 +51,12 @@ export const enrollmentsModule = new Elysia({
       auth: { can: ["create", "Enrollment"] },
       body: EnrollBodySchema,
       response: {
+        401: "ProblemDetails",
+        422: "ProblemDetails",
         201: dataOf(EnrollmentSchema),
-        402: ProblemDetailsSchema,
-        404: ProblemDetailsSchema,
-        409: ProblemDetailsSchema,
+        402: "ProblemDetails",
+        404: "ProblemDetails",
+        409: "ProblemDetails",
       },
       detail: {
         summary: "Enroll in a course",
@@ -70,7 +73,10 @@ export const enrollmentsModule = new Elysia({
     async ({ user }) => ok(await enrollmentService.listForUser(user.id)),
     {
       auth: { can: ["read", "Enrollment"] },
-      response: { 200: dataOf(t.Array(MyEnrollmentSchema)) },
+      response: {
+        401: "ProblemDetails",
+        200: dataOf(t.Array(MyEnrollmentSchema)),
+      },
       detail: {
         summary: "List my enrollments",
         tags: ["Enrollments"],
@@ -90,9 +96,10 @@ export const enrollmentsModule = new Elysia({
       auth: true,
       params: t.Object({ courseId: t.String({ minLength: 1 }) }),
       response: {
+        401: "ProblemDetails",
         200: dataOf(t.Array(CourseEnrollmentSchema)),
-        403: ProblemDetailsSchema,
-        404: ProblemDetailsSchema,
+        403: "ProblemDetails",
+        404: "ProblemDetails",
       },
       detail: {
         summary: "List a course's enrollments",
@@ -116,8 +123,9 @@ export const enrollmentsModule = new Elysia({
       auth: { can: ["delete", "Enrollment"] },
       params: t.Object({ id: t.String({ minLength: 1 }) }),
       response: {
+        401: "ProblemDetails",
         200: dataOf(t.Object({ id: t.String(), deleted: t.Boolean() })),
-        404: ProblemDetailsSchema,
+        404: "ProblemDetails",
       },
       detail: {
         summary: "Unenroll from a course",

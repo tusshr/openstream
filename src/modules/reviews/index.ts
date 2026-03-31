@@ -1,7 +1,7 @@
 import { subject } from "@casl/ability";
 import { Elysia, status, t } from "elysia";
 
-import { ProblemDetailsSchema } from "@/lib/api/models";
+import { errorModels } from "@/lib/api/error-models";
 import { dataOf, HttpProblem, ok } from "@/lib/response";
 import { authMacro } from "@/modules/auth";
 
@@ -21,6 +21,7 @@ export const reviewsModule = new Elysia({
   prefix: "/reviews",
 })
   .use(authMacro)
+  .use(errorModels)
   // Public: a course's reviews.
   .get(
     "/course/:courseId",
@@ -64,10 +65,12 @@ export const reviewsModule = new Elysia({
       auth: { can: ["create", "Review"] },
       body: CreateReviewBodySchema,
       response: {
+        401: "ProblemDetails",
+        422: "ProblemDetails",
         201: dataOf(ReviewSchema),
-        403: ProblemDetailsSchema,
-        404: ProblemDetailsSchema,
-        409: ProblemDetailsSchema,
+        403: "ProblemDetails",
+        404: "ProblemDetails",
+        409: "ProblemDetails",
       },
       detail: {
         summary: "Write a review",
@@ -93,9 +96,11 @@ export const reviewsModule = new Elysia({
       params: idParam,
       body: UpdateReviewBodySchema,
       response: {
+        401: "ProblemDetails",
+        422: "ProblemDetails",
         200: dataOf(ReviewSchema),
-        403: ProblemDetailsSchema,
-        404: ProblemDetailsSchema,
+        403: "ProblemDetails",
+        404: "ProblemDetails",
       },
       detail: {
         summary: "Update a review",
@@ -120,9 +125,10 @@ export const reviewsModule = new Elysia({
       auth: { can: ["delete", "Review"] },
       params: idParam,
       response: {
+        401: "ProblemDetails",
         200: dataOf(t.Object({ id: t.String(), deleted: t.Boolean() })),
-        403: ProblemDetailsSchema,
-        404: ProblemDetailsSchema,
+        403: "ProblemDetails",
+        404: "ProblemDetails",
       },
       detail: {
         summary: "Delete a review",

@@ -1,6 +1,6 @@
 import { Elysia, status, t } from "elysia";
 
-import { ProblemDetailsSchema } from "@/lib/api/models";
+import { errorModels } from "@/lib/api/error-models";
 import { dataOf, HttpProblem, ok } from "@/lib/response";
 import { authMacro } from "@/modules/auth";
 
@@ -12,6 +12,7 @@ const mutateSecurity = [{ sessionCookie: [], csrfHeader: [] }];
 
 export const ordersModule = new Elysia({ name: "orders", prefix: "/orders" })
   .use(authMacro)
+  .use(errorModels)
   .post(
     "/",
     async ({ body, user }) => {
@@ -37,9 +38,11 @@ export const ordersModule = new Elysia({ name: "orders", prefix: "/orders" })
       auth: { can: ["create", "Order"] },
       body: CheckoutBodySchema,
       response: {
+        401: "ProblemDetails",
+        422: "ProblemDetails",
         201: dataOf(OrderSchema),
-        404: ProblemDetailsSchema,
-        409: ProblemDetailsSchema,
+        404: "ProblemDetails",
+        409: "ProblemDetails",
       },
       detail: {
         summary: "Checkout a course",
@@ -70,9 +73,10 @@ export const ordersModule = new Elysia({ name: "orders", prefix: "/orders" })
       auth: { can: ["create", "Order"] },
       params: idParam,
       response: {
+        401: "ProblemDetails",
         200: dataOf(OrderSchema),
-        404: ProblemDetailsSchema,
-        409: ProblemDetailsSchema,
+        404: "ProblemDetails",
+        409: "ProblemDetails",
       },
       detail: {
         summary: "Pay an order (mock)",
@@ -85,7 +89,7 @@ export const ordersModule = new Elysia({ name: "orders", prefix: "/orders" })
   )
   .get("/", async ({ user }) => ok(await orderService.listForUser(user.id)), {
     auth: { can: ["read", "Order"] },
-    response: { 200: dataOf(t.Array(OrderSchema)) },
+    response: { 401: "ProblemDetails", 200: dataOf(t.Array(OrderSchema)) },
     detail: {
       summary: "List my orders",
       tags: ["Orders"],
@@ -103,8 +107,9 @@ export const ordersModule = new Elysia({ name: "orders", prefix: "/orders" })
       auth: { can: ["read", "Order"] },
       params: idParam,
       response: {
+        401: "ProblemDetails",
         200: dataOf(OrderWithItemsSchema),
-        404: ProblemDetailsSchema,
+        404: "ProblemDetails",
       },
       detail: {
         summary: "Get an order",
