@@ -1,5 +1,6 @@
 import { Elysia, t } from "elysia";
 
+import { errorModels } from "@/lib/api/error-models";
 import { dataOf, HttpProblem, ok } from "@/lib/response";
 import { authMacro } from "@/modules/auth";
 
@@ -8,6 +9,7 @@ import { usersService } from "./service";
 
 export const users = new Elysia({ name: "users" })
   .use(authMacro)
+  .use(errorModels)
   .model({
     "users.me.response": dataOf(UserResponseSchema),
     "users.list.response": dataOf(t.Array(UserResponseSchema)),
@@ -27,7 +29,7 @@ export const users = new Elysia({ name: "users" })
       }),
     {
       auth: true,
-      response: { 200: "users.me.response" },
+      response: { 401: "ProblemDetails", 200: "users.me.response" },
       detail: {
         summary: "Get current user",
         description: "Returns the authenticated user from the active session.",
@@ -38,7 +40,7 @@ export const users = new Elysia({ name: "users" })
   )
   .get("/users", async () => ok(await usersService.list()), {
     auth: { can: ["read", "User"] },
-    response: { 200: "users.list.response" },
+    response: { 401: "ProblemDetails", 200: "users.list.response" },
     detail: {
       summary: "List users",
       description:
@@ -66,7 +68,11 @@ export const users = new Elysia({ name: "users" })
       auth: { can: ["update", "User"] },
       params: t.Object({ id: t.String({ minLength: 1 }) }),
       body: "users.role.body",
-      response: { 200: "users.me.response" },
+      response: {
+        401: "ProblemDetails",
+        422: "ProblemDetails",
+        200: "users.me.response",
+      },
       detail: {
         summary: "Set a user's role",
         description:

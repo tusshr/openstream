@@ -1,6 +1,6 @@
 import { Elysia, t } from "elysia";
 
-import { ProblemDetailsSchema } from "@/lib/api/models";
+import { errorModels } from "@/lib/api/error-models";
 import { dataOf, HttpProblem, ok } from "@/lib/response";
 import { authMacro } from "@/modules/auth";
 
@@ -16,6 +16,7 @@ export const progressModule = new Elysia({
   prefix: "/progress",
 })
   .use(authMacro)
+  .use(errorModels)
   .put(
     "/",
     async ({ body, user }) => {
@@ -40,9 +41,11 @@ export const progressModule = new Elysia({
       auth: { can: ["create", "Progress"] },
       body: RecordProgressBodySchema,
       response: {
+        401: "ProblemDetails",
+        422: "ProblemDetails",
         200: dataOf(RecordProgressResponseSchema),
-        403: ProblemDetailsSchema,
-        404: ProblemDetailsSchema,
+        403: "ProblemDetails",
+        404: "ProblemDetails",
       },
       detail: {
         summary: "Record lesson progress",
@@ -60,7 +63,10 @@ export const progressModule = new Elysia({
     {
       auth: { can: ["read", "Progress"] },
       params: t.Object({ courseId: t.String({ minLength: 1 }) }),
-      response: { 200: dataOf(t.Array(CourseProgressItemSchema)) },
+      response: {
+        401: "ProblemDetails",
+        200: dataOf(t.Array(CourseProgressItemSchema)),
+      },
       detail: {
         summary: "My progress in a course",
         tags: ["Progress"],

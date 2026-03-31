@@ -1,6 +1,6 @@
 import { Elysia, t } from "elysia";
 
-import { ProblemDetailsSchema } from "@/lib/api/models";
+import { errorModels } from "@/lib/api/error-models";
 import { dataOf, HttpProblem, ok } from "@/lib/response";
 import { authMacro } from "@/modules/auth";
 
@@ -15,6 +15,7 @@ export const educatorsModule = new Elysia({
   prefix: "/educators",
 })
   .use(authMacro)
+  .use(errorModels)
   .put(
     "/me",
     async ({ body, user }) => {
@@ -24,7 +25,11 @@ export const educatorsModule = new Elysia({
     {
       auth: { can: ["create", "EducatorProfile"] },
       body: UpsertEducatorProfileBodySchema,
-      response: { 200: dataOf(EducatorProfileSchema) },
+      response: {
+        401: "ProblemDetails",
+        422: "ProblemDetails",
+        200: dataOf(EducatorProfileSchema),
+      },
       detail: {
         summary: "Upsert my educator profile",
         tags: ["Educators"],
@@ -48,8 +53,9 @@ export const educatorsModule = new Elysia({
     {
       auth: { can: ["create", "EducatorProfile"] },
       response: {
+        401: "ProblemDetails",
         200: dataOf(EducatorProfileSchema),
-        404: ProblemDetailsSchema,
+        404: "ProblemDetails",
       },
       detail: {
         summary: "Get my educator profile",
@@ -70,7 +76,7 @@ export const educatorsModule = new Elysia({
       params: t.Object({ userId: t.String({ minLength: 1 }) }),
       response: {
         200: dataOf(EducatorProfileSchema),
-        404: ProblemDetailsSchema,
+        404: "ProblemDetails",
       },
       detail: { summary: "Get an educator profile", tags: ["Educators"] },
     },

@@ -1,5 +1,6 @@
 import { Elysia } from "elysia";
 
+import { errorModels } from "@/lib/api/error-models";
 import { audit } from "@/lib/audit";
 import { collectionOf, dataOf, HttpProblem, ok } from "@/lib/response";
 import { authMacro } from "@/modules/auth";
@@ -25,6 +26,7 @@ function toActingUser(user: AuthedUser): ActingUser {
 
 export const storage = new Elysia({ prefix: "/storage", name: "storage" })
   .use(authMacro)
+  .use(errorModels)
   .model({
     "storage.upload.body": PresignUploadBodySchema,
     "storage.key.query": KeyQuerySchema,
@@ -68,6 +70,8 @@ export const storage = new Elysia({ prefix: "/storage", name: "storage" })
       }),
       body: "storage.upload.body",
       response: {
+        401: "ProblemDetails",
+        422: "ProblemDetails",
         200: "storage.presigned.response",
         415: "storage.unsupported.response",
         429: "rate-limit.response",
@@ -102,6 +106,7 @@ export const storage = new Elysia({ prefix: "/storage", name: "storage" })
       }),
       query: "storage.key.query",
       response: {
+        401: "ProblemDetails",
         200: "storage.presigned.response",
         403: "storage.forbidden.response",
         429: "rate-limit.response",
@@ -142,6 +147,7 @@ export const storage = new Elysia({ prefix: "/storage", name: "storage" })
       }),
       query: "storage.files.list.query",
       response: {
+        401: "ProblemDetails",
         200: "storage.files.list.response",
         429: "rate-limit.response",
       },
@@ -184,6 +190,7 @@ export const storage = new Elysia({ prefix: "/storage", name: "storage" })
       }),
       query: "storage.key.query",
       response: {
+        401: "ProblemDetails",
         200: "storage.delete.response",
         403: "storage.forbidden.response",
         429: "rate-limit.response",

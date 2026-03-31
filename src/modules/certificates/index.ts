@@ -1,6 +1,6 @@
 import { Elysia, t } from "elysia";
 
-import { ProblemDetailsSchema } from "@/lib/api/models";
+import { errorModels } from "@/lib/api/error-models";
 import { dataOf, HttpProblem, ok } from "@/lib/response";
 import { authMacro } from "@/modules/auth";
 
@@ -12,6 +12,7 @@ export const certificatesModule = new Elysia({
   prefix: "/certificates",
 })
   .use(authMacro)
+  .use(errorModels)
   .get(
     "/verify/:code",
     async ({ params }) => {
@@ -29,7 +30,7 @@ export const certificatesModule = new Elysia({
       params: t.Object({ code: t.String({ minLength: 1 }) }),
       response: {
         200: dataOf(CertificateVerificationSchema),
-        404: ProblemDetailsSchema,
+        404: "ProblemDetails",
       },
       detail: {
         summary: "Verify a certificate",
@@ -42,7 +43,10 @@ export const certificatesModule = new Elysia({
     async ({ user }) => ok(await certificateService.listForUser(user.id)),
     {
       auth: { can: ["read", "Certificate"] },
-      response: { 200: dataOf(t.Array(MyCertificateSchema)) },
+      response: {
+        401: "ProblemDetails",
+        200: dataOf(t.Array(MyCertificateSchema)),
+      },
       detail: {
         summary: "My certificates",
         tags: ["Certificates"],
