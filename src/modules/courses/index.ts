@@ -1,7 +1,7 @@
 import { subject } from "@casl/ability";
 import { Elysia, status, t } from "elysia";
 
-import { ProblemDetailsSchema } from "@/lib/api/models";
+import { errorModels } from "@/lib/api/error-models";
 import {
   collectionOf,
   dataOf,
@@ -26,6 +26,7 @@ const idParam = t.Object({ id: t.String({ minLength: 1 }) });
 
 export const coursesModule = new Elysia({ name: "courses", prefix: "/courses" })
   .use(authMacro)
+  .use(errorModels)
   .model({
     "courses.list": collectionOf(CourseCardSchema),
     "courses.detail": dataOf(CourseDetailSchema),
@@ -60,7 +61,10 @@ export const coursesModule = new Elysia({ name: "courses", prefix: "/courses" })
     async ({ user }) => ok(await courseService.listByEducator(user.id)),
     {
       auth: { can: ["create", "Course"] },
-      response: { 200: dataOf(t.Array(ManagedCourseSchema)) },
+      response: {
+        401: "ProblemDetails",
+        200: dataOf(t.Array(ManagedCourseSchema)),
+      },
       detail: {
         summary: "List my courses",
         description:
@@ -82,9 +86,10 @@ export const coursesModule = new Elysia({ name: "courses", prefix: "/courses" })
       auth: { can: ["create", "Course"] },
       params: idParam,
       response: {
+        401: "ProblemDetails",
         200: "courses.detail",
-        403: ProblemDetailsSchema,
-        404: ProblemDetailsSchema,
+        403: "ProblemDetails",
+        404: "ProblemDetails",
       },
       detail: {
         summary: "Get my course (any status, incl. draft)",
@@ -105,7 +110,7 @@ export const coursesModule = new Elysia({ name: "courses", prefix: "/courses" })
       params: t.Object({ slug: t.String() }),
       response: {
         200: "courses.detail",
-        404: ProblemDetailsSchema,
+        404: "ProblemDetails",
       },
       detail: {
         summary: "Get course",
@@ -124,7 +129,11 @@ export const coursesModule = new Elysia({ name: "courses", prefix: "/courses" })
     {
       auth: { can: ["create", "Course"] },
       body: "courses.create.body",
-      response: { 201: "courses.managed" },
+      response: {
+        401: "ProblemDetails",
+        422: "ProblemDetails",
+        201: "courses.managed",
+      },
       detail: {
         summary: "Create a course",
         description:
@@ -156,9 +165,11 @@ export const coursesModule = new Elysia({ name: "courses", prefix: "/courses" })
       params: idParam,
       body: "courses.update.body",
       response: {
+        401: "ProblemDetails",
+        422: "ProblemDetails",
         200: "courses.managed",
-        403: ProblemDetailsSchema,
-        404: ProblemDetailsSchema,
+        403: "ProblemDetails",
+        404: "ProblemDetails",
       },
       detail: {
         summary: "Update a course",
@@ -188,9 +199,10 @@ export const coursesModule = new Elysia({ name: "courses", prefix: "/courses" })
       auth: { can: ["delete", "Course"] },
       params: idParam,
       response: {
+        401: "ProblemDetails",
         200: dataOf(t.Object({ id: t.String(), deleted: t.Boolean() })),
-        403: ProblemDetailsSchema,
-        404: ProblemDetailsSchema,
+        403: "ProblemDetails",
+        404: "ProblemDetails",
       },
       detail: {
         summary: "Delete a course",

@@ -1,6 +1,6 @@
 import { Elysia, t } from "elysia";
 
-import { ProblemDetailsSchema } from "@/lib/api/models";
+import { errorModels } from "@/lib/api/error-models";
 import { dataOf, HttpProblem, ok } from "@/lib/response";
 import { getSession } from "@/lib/session";
 
@@ -9,7 +9,7 @@ import { playerService } from "./service";
 
 const SESSION_COOKIE = "session_token";
 
-export const playerModule = new Elysia({ name: "player" }).get(
+export const playerModule = new Elysia({ name: "player" }).use(errorModels).get(
   "/lessons/:id",
   async ({ params, cookie }) => {
     const token = cookie[SESSION_COOKIE]?.value as string | undefined;
@@ -35,8 +35,8 @@ export const playerModule = new Elysia({ name: "player" }).get(
     params: t.Object({ id: t.String({ minLength: 1 }) }),
     response: {
       200: dataOf(LessonPlayerSchema),
-      403: ProblemDetailsSchema,
-      404: ProblemDetailsSchema,
+      403: "ProblemDetails",
+      404: "ProblemDetails",
     },
     detail: {
       summary: "Play a lesson",

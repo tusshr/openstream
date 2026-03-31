@@ -1,6 +1,6 @@
 import { Elysia, status, t } from "elysia";
 
-import { ProblemDetailsSchema } from "@/lib/api/models";
+import { errorModels } from "@/lib/api/error-models";
 import { dataOf, HttpProblem, ok } from "@/lib/response";
 import { authMacro } from "@/modules/auth";
 
@@ -22,10 +22,11 @@ const deletedResponse = dataOf(
   t.Object({ id: t.String(), deleted: t.Boolean() }),
 );
 const ownerSecurity = [{ sessionCookie: [], csrfHeader: [] }];
-const errs = { 403: ProblemDetailsSchema, 404: ProblemDetailsSchema };
+const errs = { 403: "ProblemDetails", 404: "ProblemDetails" } as const;
 
 export const courseContentModule = new Elysia({ name: "course-content" })
   .use(authMacro)
+  .use(errorModels)
   .post(
     "/chapters",
     async ({ body, ability }) => {
@@ -39,7 +40,12 @@ export const courseContentModule = new Elysia({ name: "course-content" })
     {
       auth: { can: ["update", "Course"] },
       body: CreateChapterBodySchema,
-      response: { 201: dataOf(ChapterSchema), ...errs },
+      response: {
+        401: "ProblemDetails",
+        422: "ProblemDetails",
+        201: dataOf(ChapterSchema),
+        ...errs,
+      },
       detail: {
         summary: "Add a chapter to a course",
         tags: ["Chapters"],
@@ -61,7 +67,12 @@ export const courseContentModule = new Elysia({ name: "course-content" })
       auth: { can: ["update", "Course"] },
       params: idParam,
       body: UpdateChapterBodySchema,
-      response: { 200: dataOf(ChapterSchema), ...errs },
+      response: {
+        401: "ProblemDetails",
+        422: "ProblemDetails",
+        200: dataOf(ChapterSchema),
+        ...errs,
+      },
       detail: {
         summary: "Update a chapter",
         tags: ["Chapters"],
@@ -82,7 +93,7 @@ export const courseContentModule = new Elysia({ name: "course-content" })
     {
       auth: { can: ["update", "Course"] },
       params: idParam,
-      response: { 200: deletedResponse, ...errs },
+      response: { 401: "ProblemDetails", 200: deletedResponse, ...errs },
       detail: {
         summary: "Delete a chapter",
         tags: ["Chapters"],
@@ -107,7 +118,12 @@ export const courseContentModule = new Elysia({ name: "course-content" })
     {
       auth: { can: ["update", "Course"] },
       body: CreateLessonBodySchema,
-      response: { 201: dataOf(LessonSchema), ...errs },
+      response: {
+        401: "ProblemDetails",
+        422: "ProblemDetails",
+        201: dataOf(LessonSchema),
+        ...errs,
+      },
       detail: {
         summary: "Add a lesson to a chapter",
         tags: ["Lessons"],
@@ -128,7 +144,12 @@ export const courseContentModule = new Elysia({ name: "course-content" })
       auth: { can: ["update", "Course"] },
       params: idParam,
       body: UpdateLessonBodySchema,
-      response: { 200: dataOf(LessonSchema), ...errs },
+      response: {
+        401: "ProblemDetails",
+        422: "ProblemDetails",
+        200: dataOf(LessonSchema),
+        ...errs,
+      },
       detail: {
         summary: "Update a lesson",
         tags: ["Lessons"],
@@ -148,7 +169,7 @@ export const courseContentModule = new Elysia({ name: "course-content" })
     {
       auth: { can: ["update", "Course"] },
       params: idParam,
-      response: { 200: deletedResponse, ...errs },
+      response: { 401: "ProblemDetails", 200: deletedResponse, ...errs },
       detail: {
         summary: "Delete a lesson",
         tags: ["Lessons"],
@@ -168,7 +189,12 @@ export const courseContentModule = new Elysia({ name: "course-content" })
     {
       auth: { can: ["update", "Course"] },
       body: CreateAttachmentBodySchema,
-      response: { 201: dataOf(AttachmentSchema), ...errs },
+      response: {
+        401: "ProblemDetails",
+        422: "ProblemDetails",
+        201: dataOf(AttachmentSchema),
+        ...errs,
+      },
       detail: {
         summary: "Attach a file to a lesson",
         tags: ["Lessons"],
@@ -187,7 +213,11 @@ export const courseContentModule = new Elysia({ name: "course-content" })
     {
       auth: { can: ["update", "Course"] },
       params: t.Object({ lessonId: t.String({ minLength: 1 }) }),
-      response: { 200: dataOf(t.Array(AttachmentSchema)), ...errs },
+      response: {
+        401: "ProblemDetails",
+        200: dataOf(t.Array(AttachmentSchema)),
+        ...errs,
+      },
       detail: {
         summary: "List a lesson's attachments",
         tags: ["Lessons"],
@@ -211,7 +241,7 @@ export const courseContentModule = new Elysia({ name: "course-content" })
     {
       auth: { can: ["update", "Course"] },
       params: idParam,
-      response: { 200: deletedResponse, ...errs },
+      response: { 401: "ProblemDetails", 200: deletedResponse, ...errs },
       detail: {
         summary: "Delete an attachment",
         tags: ["Lessons"],
